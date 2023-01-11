@@ -26,10 +26,10 @@ def main() -> int:
 
 
     memory = Memory(10_000)
-    obs = env.reset()
+    obs, info = env.reset()
 
-    for it in range(1_000):
-        # Do this for the bath norm
+    for it in range(30_000):
+        # Do this for the batch norm
         model.eval()
 
         # Take the action the network tells us to
@@ -38,11 +38,11 @@ def main() -> int:
         action  = model(state).argmax().item()
 
         # Act in environment and store the memory
-        next_state, reward, done, info = env.step(action)
+        next_state, reward, done, truncated, info = env.step(action)
         memory.store([obs, action, reward, done, next_state])
 
         if done:
-            obs = env.reset()
+            obs, info = env.reset()
 
         if len(memory) > 128:
             model.train()
@@ -84,17 +84,18 @@ def main() -> int:
 
 
     # Test the model after training
-    n_epiosdes = 10
+    n_epiosdes = 1
     model.eval()
     rewards = []
+    env = gym.make("CartPole-v1", render_mode="human")
     for episode in range(n_epiosdes):
-        obs = env.reset()
+        obs, info = env.reset()
         done = False
         counter = 0
         while not done:
             state = wrap_input(obs, device).unsqueeze(0)
             action = model(state).argmax().item()
-            obs, reward, done, info = env.step(action)
+            obs, reward, done, truncated, info = env.step(action)
             counter += 1
             env.render()
         rewards.append(counter)
