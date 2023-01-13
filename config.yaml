@@ -1,0 +1,34 @@
+dqn:
+  layer_size: 64
+
+anfis:
+  layer_size: 40
+  n_rules: 16
+
+general:
+  type: dqn
+  device: cuda
+
+optimizer:
+  type: Adam
+  lr: 1.0e-3
+
+loss:
+  type: mse
+
+memory:
+  max_len: 10_000
+
+training:
+  env: CartPole-v1
+  n_iterations: 65_000
+  batch_size: 128
+  gamma: 0.5
+  train_every: 1
+  update_every: 4
+  tau: 1.0e-2
+  epsilon: 1.0e-1
+
+testing:
+  n_epiosdes: 20
+  render_mode: rgb_array

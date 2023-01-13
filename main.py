@@ -6,36 +6,58 @@ from torch import nn
 from torch.nn import functional as F
 from torch import optim
 
-from models import DQN
+from config import Config
+from models import DQN, ANFIS
 from memory import Memory
+from utils import wrap_input
 
-def wrap_input(arr, device, dtype=torch.float):
-    return torch.from_numpy(np.array(arr)).type(dtype).to(device)
+LOSS_FNS = {
+    "mse" : nn.MSELoss(),
+    "huber" : nn.HuberLoss(),
+}
+
+OPTIMIZERS = {
+    "Adam": optim.Adam,
+}
 
 def main() -> int:
-    env = gym.make("CartPole-v1")
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    conf = Config("config.yaml")
+
+    env = gym.make(conf.training.env)
+    device = torch.device(conf.general.device if torch.cuda.is_available() else "cpu")
 
     # Online and offline model for learning
-    model = DQN(env.observation_space, env.action_space).to(device)
-    target = DQN(env.observation_space, env.action_space).to(device)
+    if conf.general.type == "dqn":
+        # DQN
+        model = DQN(env.observation_space, env.action_space, conf.dqn.layer_size).to(device)
+        target = DQN(env.observation_space, env.action_space, conf.dqn.layer_size).to(device)
+    elif conf.general.type == "anfis":
+        # ANFIS
+        model = ANFIS(env.observation_space, env.action_space, conf.anfis.layer_size, conf.anfis.n_rules).to(device)
+        target = ANFIS(env.observation_space, env.action_space, conf.anfis.layer_size, conf.anfis.n_rules).to(device)
+    else:
+        print(f"Model type is not implemented: {conf.general.type}")
+        return -1
 
     # Optimizer and loss function
-    optimizer = optim.Adam(model.parameters(), lr=.001)
-    loss_fn = nn.MSELoss()
+    optimizer = OPTIMIZERS[conf.optimizer.type](model.parameters(), lr=conf.optimizer.lr)
+    loss_fn = LOSS_FNS[conf.loss.type]
 
 
-    memory = Memory(10_000)
+    memory = Memory(conf.memory.max_len)
     obs, info = env.reset()
 
-    for it in range(30_000):
+    for it in range(conf.training.n_iterations):
         # Do this for the batch norm
         model.eval()
 
-        # Take the action the network tells us to
-        # TODO: environment exploration
         state = wrap_input(obs, device).unsqueeze(0)
-        action  = model(state).argmax().item()
+
+        # Determine if we should take random action or greedy one
+        if np.random.random() <= conf.training.epsilon:
+            action = env.action_space.sample()
+        else:
+            action  = model(state).argmax().item()
 
         # Act in environment and store the memory
         next_state, reward, done, truncated, info = env.step(action)
@@ -44,9 +66,10 @@ def main() -> int:
         if done:
             obs, info = env.reset()
 
-        if len(memory) > 128:
+        # Experience replay and training
+        if it % conf.training.train_every == 0 and len(memory) > conf.training.batch_size:
             model.train()
-            states, actions, rewards, dones, next_states = memory.sample(128)
+            states, actions, rewards, dones, next_states = memory.sample(conf.training.batch_size)
 
             # Wrap and move all values to the cpu
             states = wrap_input(states, device)
@@ -62,10 +85,11 @@ def main() -> int:
             next_qs = target(next_states)
             next_qs = next_qs.max(dim=1)[0]
             next_qs[dones] = 0.0
-            target_qs = rewards + 0.5 * next_qs
+            target_qs = rewards + conf.training.gamma * next_qs
 
             # Compute loss
             loss = loss_fn(qs, target_qs)
+            # print(loss.item(), end="\r")
             optimizer.zero_grad()
             loss.backward()
 
@@ -76,19 +100,22 @@ def main() -> int:
 
             # soft update
             for target_param, local_param in zip(target.parameters(), model.parameters()):
-                target_param.data.copy_(1e-3 * local_param.data + (1 - 1e-3) * target_param.data)
+                target_param.data.copy_(
+                    conf.training.tau * local_param.data + (1 - conf.training.tau) * target_param.data
+                )
 
 
-        if it % 8 == 0:
+        if it % conf.training.update_every == 0:
             target.load_state_dict(model.state_dict())
+
+    env.close()
 
 
     # Test the model after training
-    n_epiosdes = 1
     model.eval()
     rewards = []
-    env = gym.make("CartPole-v1", render_mode="human")
-    for episode in range(n_epiosdes):
+    env = gym.make(conf.training.env, render_mode=conf.testing.render_mode)
+    for episode in range(conf.testing.n_epiosdes):
         obs, info = env.reset()
         done = False
         counter = 0
@@ -97,7 +124,6 @@ def main() -> int:
             action = model(state).argmax().item()
             obs, reward, done, truncated, info = env.step(action)
             counter += 1
-            env.render()
         rewards.append(counter)
 
     print(rewards)
