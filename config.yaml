@@ -21,14 +21,14 @@ memory:
 
 training:
   env: CartPole-v1
-  n_iterations: 65_000
+  n_iterations: 100_000
   batch_size: 128
-  gamma: 0.5
+  gamma: 0.99
   train_every: 1
   update_every: 4
   tau: 1.0e-2
   epsilon: 1.0e-1
 
 testing:
-  n_epiosdes: 20
-  render_mode: rgb_array
+  n_epiosdes: 10
+  test_every: 1_000

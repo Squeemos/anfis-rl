@@ -5,6 +5,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torch import optim
+from torch.utils.tensorboard import SummaryWriter
 
 from config import Config
 from models import DQN, ANFIS
@@ -22,6 +23,7 @@ OPTIMIZERS = {
 
 def main() -> int:
     conf = Config("config.yaml")
+    writer = SummaryWriter(f"./runs/{conf.general.type}/")
 
     env = gym.make(conf.training.env)
     device = torch.device(conf.general.device if torch.cuda.is_available() else "cpu")
@@ -89,7 +91,7 @@ def main() -> int:
 
             # Compute loss
             loss = loss_fn(qs, target_qs)
-            # print(loss.item(), end="\r")
+            writer.add_scalar("Loss", loss.item(), it)
             optimizer.zero_grad()
             loss.backward()
 
@@ -108,27 +110,29 @@ def main() -> int:
         if it % conf.training.update_every == 0:
             target.load_state_dict(model.state_dict())
 
+        if it % conf.testing.test_every == 0:
+            print(f"{it:4}")
+            with torch.no_grad():
+                model.eval()
+                rewards = []
+                test_env = gym.make(conf.training.env)
+                for episode in range(conf.testing.n_epiosdes):
+                    done = False
+                    obs, info = test_env.reset()
+                    cum_reward = 0
+                    while not done:
+                        state = wrap_input(obs, device).unsqueeze(0)
+                        action = model(state).argmax().item()
+                        obs, reward, done, truncated, info = test_env.step(action)
+                        cum_reward += reward
+
+                    rewards.append(cum_reward)
+                writer.add_scalar("Testing Mean Reward", np.mean(rewards), it)
+                test_env.close()
+
+
     env.close()
-
-
-    # Test the model after training
-    model.eval()
-    rewards = []
-    env = gym.make(conf.training.env, render_mode=conf.testing.render_mode)
-    for episode in range(conf.testing.n_epiosdes):
-        obs, info = env.reset()
-        done = False
-        counter = 0
-        while not done:
-            state = wrap_input(obs, device).unsqueeze(0)
-            action = model(state).argmax().item()
-            obs, reward, done, truncated, info = env.step(action)
-            counter += 1
-        rewards.append(counter)
-
-    print(rewards)
-
-    env.close()
+    writer.close()
 
 if __name__ == "__main__":
     raise SystemExit(main())

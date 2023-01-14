@@ -38,7 +38,7 @@ class ANFIS(nn.Module):
 
         # Fuzzification Layer
         self.centers = nn.Parameter((torch.randn(1, n_rules, layer_size) -0.5 ) * 2)
-        self.widths = nn.Parameter((torch.randn(1, n_rules, layer_size) - 0.5) * 2)
+        self.widths = nn.Parameter(torch.randn(1, n_rules, layer_size) * 2)
         self.register_parameter("centers", self.centers)
         self.register_parameter("widths", self.widths)
 
