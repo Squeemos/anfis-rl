@@ -24,13 +24,15 @@ def main() -> int:
 
     model = ANFIS(env.observation_space, env.action_space, conf.anfis.layer_size, conf.anfis.n_rules).to(device)
     # model = DQN(env.observation_space, env.action_space, conf.dqn.layer_size).to(device)
-    other_model = DQN(env.observation_space, env.action_space, conf.dqn.layer_size).to(device)
+    # other_model = DQN(env.observation_space, env.action_space, conf.dqn.layer_size).to(device)
 
     model.eval()
     other_model.eval()
 
-    print(get_n_params(model))
-    print(get_n_params(other_model))
+    # print(get_n_params(model))
+    # print(get_n_params(other_model))
+
+    obs, info = env.reset()
 
 
     return 0

@@ -55,23 +55,18 @@ class ANFIS(nn.Module):
         # Fuzzification
         x = x.unsqueeze(1).unsqueeze(1)
         membership = torch.exp(-((x - self.centers) / self.widths)**2)
-        # print("membership", membership.shape)
         intermediate = membership.sum(dim=-1)
-        # print("int", intermediate.shape)
-        # membership = membership.mean(dim=-1)
-        # print("membership-mean", membership.shape)
+
+        # Triangular
+        # membership = torch.where((x.unsqueeze(2) - self.centers.unsqueeze(0)) < 0,
+        #                          (x.unsqueeze(2) - self.centers.unsqueeze(0)) / -self.widths.unsqueeze(0),
+        #                          torch.ones_like(x.unsqueeze(2)) - ((x.unsqueeze(2) - self.centers.unsqueeze(0)) / self.widths.unsqueeze(0)))
+        # membership = torch.clamp(membership, min=0, max=1)
 
         # Rule evaluation
         rule_evaluation = self.rule_layer(intermediate)
-        # rule_evaluation = F.softmax(rule_evaluation, dim=0)
-        # print(rule_evaluation.shape)
 
         # Defuzzification
         defuzzification = self.defuzzification(rule_evaluation)
-
-        # Normalization
-        # output = F.softmax(defuzzification, dim=-1).squeeze(1)
-        # print("softmax", output.shape)
-
 
         return defuzzification.squeeze(1)

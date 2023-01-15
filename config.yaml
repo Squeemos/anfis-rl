@@ -20,7 +20,7 @@ memory:
   max_len: 10_000
 
 training:
-  env: LunarLander-v2
+  env: CartPole-v1
   n_iterations: 100_000
   batch_size: 128
   gamma: 0.99

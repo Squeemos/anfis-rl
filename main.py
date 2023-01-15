@@ -1,5 +1,6 @@
 import gym
 import gymnasium
+
 import numpy as np
 
 import torch
@@ -23,7 +24,13 @@ OPTIMIZERS = {
 }
 
 ENVIRONMENTS = {
+    # Classic control
     "CartPole-v1" : gym.make("CartPole-v1"),
+    "Arcobot-v1" : gymnasium.make("Acrobot-v1"),
+    "Pendulum-v1" : gym.make("Pendulum-v1"),
+    "MountainCar-v0" : gym.make("MountainCar-v0"),
+
+    # Box2d
     "LunarLander-v2" : gymnasium.make(
         "LunarLander-v2",
         continuous=False,
@@ -31,7 +38,11 @@ ENVIRONMENTS = {
         enable_wind=False,
         wind_power=15.0,
         turbulence_power=False,
-    )
+    ),
+
+    # Atari
+
+    # External
 }
 
 def main() -> int:
