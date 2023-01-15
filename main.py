@@ -1,4 +1,5 @@
 import gym
+import gymnasium
 import numpy as np
 
 import torch
@@ -21,11 +22,23 @@ OPTIMIZERS = {
     "Adam": optim.Adam,
 }
 
+ENVIRONMENTS = {
+    "CartPole-v1" : gym.make("CartPole-v1"),
+    "LunarLander-v2" : gymnasium.make(
+        "LunarLander-v2",
+        continuous=False,
+        gravity=-10.0,
+        enable_wind=False,
+        wind_power=15.0,
+        turbulence_power=False,
+    )
+}
+
 def main() -> int:
     conf = Config("config.yaml")
-    writer = SummaryWriter(f"./runs/{conf.general.type}/")
+    writer = SummaryWriter(f"./runs/{conf.training.env}/{conf.general.type}/")
 
-    env = gym.make(conf.training.env)
+    env = ENVIRONMENTS[conf.training.env]
     device = torch.device(conf.general.device if torch.cuda.is_available() else "cpu")
 
     # Online and offline model for learning
@@ -115,7 +128,7 @@ def main() -> int:
             with torch.no_grad():
                 model.eval()
                 rewards = []
-                test_env = gym.make(conf.training.env)
+                test_env = ENVIRONMENTS[conf.training.env]
                 for episode in range(conf.testing.n_epiosdes):
                     done = False
                     obs, info = test_env.reset()

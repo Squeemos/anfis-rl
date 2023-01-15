@@ -6,7 +6,7 @@ anfis:
   n_rules: 16
 
 general:
-  type: dqn
+  type: anfis
   device: cuda
 
 optimizer:
@@ -20,7 +20,7 @@ memory:
   max_len: 10_000
 
 training:
-  env: CartPole-v1
+  env: LunarLander-v2
   n_iterations: 100_000
   batch_size: 128
   gamma: 0.99
