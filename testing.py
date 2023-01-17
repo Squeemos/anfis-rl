@@ -19,13 +19,7 @@ def main() -> int:
 
     obs, info = env.reset()
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    model = ANFIS(env.observation_space, env.action_space, 8, 2).to(device)
-    model.eval()
-    sample_in = wrap_input(obs, device).unsqueeze(0)
-    output = model(sample_in)
-    print(output.shape)
+    print(obs.max(), obs.min())
 
 
     return 0

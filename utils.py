@@ -33,6 +33,7 @@ class WarpFrame(gym.ObservationWrapper):
     # Setup so that PyTorch can accept it
     def observation(self, frame):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        frame = frame / 255.0
         frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
         return frame[None, :, :]
 

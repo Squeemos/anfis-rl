@@ -57,6 +57,9 @@ def main() -> int:
     obs, info = env.reset()
 
     for it in range(conf.training.n_iterations):
+        if it % conf.training.log_every == 0:
+            print(f"{it:6}")
+
         # Do this for the batch norm
         model.eval()
 
@@ -120,7 +123,6 @@ def main() -> int:
 
         # Test the environment
         if it % conf.testing.test_every == 0:
-            print(f"{it:4}")
             with torch.no_grad():
                 model.eval()
                 rewards = []
