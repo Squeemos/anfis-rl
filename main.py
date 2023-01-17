@@ -2,6 +2,7 @@ import gym
 import gymnasium
 
 import numpy as np
+from copy import deepcopy
 
 import torch
 from torch import nn
@@ -12,7 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 from config import Config
 from models import DQN, ANFIS
 from memory import Memory
-from utils import wrap_input
+from utils import wrap_input, make_env
 
 LOSS_FNS = {
     "mse" : nn.MSELoss(),
@@ -23,33 +24,12 @@ OPTIMIZERS = {
     "Adam": optim.Adam,
 }
 
-ENVIRONMENTS = {
-    # Classic control
-    "CartPole-v1" : gym.make("CartPole-v1"),
-    "Arcobot-v1" : gymnasium.make("Acrobot-v1"),
-    "Pendulum-v1" : gym.make("Pendulum-v1"),
-    "MountainCar-v0" : gym.make("MountainCar-v0"),
-
-    # Box2d
-    "LunarLander-v2" : gymnasium.make(
-        "LunarLander-v2",
-        continuous=False,
-        gravity=-10.0,
-        enable_wind=False,
-        wind_power=15.0,
-        turbulence_power=False,
-    ),
-
-    # Atari
-
-    # External
-}
-
 def main() -> int:
     conf = Config("config.yaml")
     writer = SummaryWriter(f"./runs/{conf.training.env}/{conf.general.type}/")
 
-    env = ENVIRONMENTS[conf.training.env]
+    env = make_env(conf.training.env)
+
     device = torch.device(conf.general.device if torch.cuda.is_available() else "cpu")
 
     # Online and offline model for learning
@@ -64,6 +44,9 @@ def main() -> int:
     else:
         print(f"Model type is not implemented: {conf.general.type}")
         return -1
+
+    # Don't let the target model train, saves some compute time
+    target.eval()
 
     # Optimizer and loss function
     optimizer = OPTIMIZERS[conf.optimizer.type](model.parameters(), lr=conf.optimizer.lr)
@@ -87,6 +70,7 @@ def main() -> int:
 
         # Act in environment and store the memory
         next_state, reward, done, truncated, info = env.step(action)
+        done = done or truncated
         memory.store([obs, action, reward, done, next_state])
 
         if done:
@@ -130,16 +114,19 @@ def main() -> int:
                     conf.training.tau * local_param.data + (1 - conf.training.tau) * target_param.data
                 )
 
-
+        # Update the double dqn
         if it % conf.training.update_every == 0:
             target.load_state_dict(model.state_dict())
 
+        # Test the environment
         if it % conf.testing.test_every == 0:
             print(f"{it:4}")
             with torch.no_grad():
                 model.eval()
                 rewards = []
-                test_env = ENVIRONMENTS[conf.training.env]
+                # Make a copy so we can interact with that on our own without
+                # messing up the training
+                test_env  = make_env(conf.training.env)
                 for episode in range(conf.testing.n_epiosdes):
                     done = False
                     obs, info = test_env.reset()
@@ -148,10 +135,12 @@ def main() -> int:
                         state = wrap_input(obs, device).unsqueeze(0)
                         action = model(state).argmax().item()
                         obs, reward, done, truncated, info = test_env.step(action)
+                        done = done or truncated
                         cum_reward += reward
 
                     rewards.append(cum_reward)
                 writer.add_scalar("Testing Mean Reward", np.mean(rewards), it)
+                writer.add_scalar("Testing Median Reward", np.median(rewards), it)
                 test_env.close()
 
 

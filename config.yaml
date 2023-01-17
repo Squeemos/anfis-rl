@@ -20,8 +20,8 @@ memory:
   max_len: 10_000
 
 training:
-  env: CartPole-v1
-  n_iterations: 100_000
+  env: ALE/Breakout-v5
+  n_iterations: 10_000
   batch_size: 128
   gamma: 0.99
   train_every: 1
