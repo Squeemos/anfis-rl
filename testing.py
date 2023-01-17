@@ -14,12 +14,20 @@ from utils import wrap_input, make_env
 
 
 def main() -> int:
-    env_name = "ALE/Breakout-v5"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    env_name = "CartPole-v1"
     env = make_env(env_name)
 
     obs, info = env.reset()
 
-    print(obs.max(), obs.min())
+    state = wrap_input(obs, device).unsqueeze(0)
+
+    model = ANFIS(env.observation_space, env.action_space, 40, 16).to(device)
+    model.eval()
+
+    output = model(state)
+    print(output)
+    print(output.shape)
 
 
     return 0

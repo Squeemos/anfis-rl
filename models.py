@@ -86,17 +86,14 @@ class ANFIS(nn.Module):
             nn.Linear(layer_size, layer_size),
         )
 
-        # Fuzzification Layer
+        # Fuzzification Layer / Rules
         self.centers = nn.Parameter((torch.randn(1, n_rules, layer_size) -0.5 ) * 2)
         self.widths = nn.Parameter(torch.randn(1, n_rules, layer_size) * 2)
         self.register_parameter("centers", self.centers)
         self.register_parameter("widths", self.widths)
 
-        # Rule Layer
-        self.rule_layer = nn.Linear(n_rules, act_space.n)
-
         # Defuzzification Layer
-        self.defuzzification = nn.Linear(act_space.n, act_space.n)
+        self.defuzzification = nn.Linear(n_rules, act_space.n)
 
     def forward(self, x):
         # Extract features
@@ -104,22 +101,27 @@ class ANFIS(nn.Module):
 
         # Neural Network
         x = self.net(x)
+        x = x.unsqueeze(1).unsqueeze(1)
 
         # Fuzzification
-        x = x.unsqueeze(1).unsqueeze(1)
+        # Apply Gaussian rules
         membership = torch.exp(-((x - self.centers) / self.widths)**2)
-        intermediate = membership.sum(dim=-1)
 
         # Triangular
-        # membership = torch.where((x.unsqueeze(2) - self.centers.unsqueeze(0)) < 0,
-        #                          (x.unsqueeze(2) - self.centers.unsqueeze(0)) / -self.widths.unsqueeze(0),
-        #                          torch.ones_like(x.unsqueeze(2)) - ((x.unsqueeze(2) - self.centers.unsqueeze(0)) / self.widths.unsqueeze(0)))
+        # membership = torch.where((x - self.centers) < 0,
+        #                          (x - self.centers) / -self.widths,
+        #                          torch.ones_like(x) - ((x - self.centers) / self.widths)
+        # )
         # membership = torch.clamp(membership, min=0, max=1)
 
-        # Rule evaluation
-        rule_evaluation = self.rule_layer(intermediate)
+        # Sum the values for the rules for the output from the fuzzification
+        rule_evaluation = membership.mean(dim=-1)
+
+        # Normalize the firing levels
+        rule_evaluation /= rule_evaluation.sum()
 
         # Defuzzification
         defuzzification = self.defuzzification(rule_evaluation)
 
+        # Squeeze to remove the extra dimension
         return defuzzification.squeeze(1)
