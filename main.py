@@ -8,6 +8,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torch import optim
+from torch.distributions import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
 from config import Config
@@ -18,6 +19,7 @@ from utils import wrap_input, make_env
 LOSS_FNS = {
     "mse" : nn.MSELoss(),
     "huber" : nn.HuberLoss(),
+    "smooth_l1" : F.smooth_l1_loss
 }
 
 OPTIMIZERS = {
@@ -56,9 +58,9 @@ def main() -> int:
     memory = Memory(conf.memory.max_len)
     obs, info = env.reset()
 
-    for it in range(conf.training.n_iterations):
+    for it in range(1, conf.training.n_iterations + 1):
         if it % conf.training.log_every == 0:
-            print(f"{it:6}")
+            print(f"{it:7}", end="\r")
 
         # Do this for the batch norm
         model.eval()
@@ -66,7 +68,9 @@ def main() -> int:
         state = wrap_input(obs, device).unsqueeze(0)
 
         # Determine if we should take random action or greedy one
-        if np.random.random() <= conf.training.epsilon:
+        epsilon = conf.training.epsilon_end * (conf.training.epsilon_start - conf.training.epsilon_end) * np.exp(-1.0 * it / conf.training.epsilon_decay)
+        writer.add_scalar("Epsilon", epsilon, it)
+        if np.random.random() <= epsilon:
             action = env.action_space.sample()
         else:
             action  = model(state).argmax().item()
@@ -80,42 +84,46 @@ def main() -> int:
             obs, info = env.reset()
 
         # Experience replay and training
-        if it % conf.training.train_every == 0 and len(memory) > conf.training.batch_size:
-            model.train()
-            states, actions, rewards, dones, next_states = memory.sample(conf.training.batch_size)
+        if it >= conf.training.train_after and it % conf.training.train_every == 0 and len(memory) > conf.training.batch_size:
+            for _ in range(conf.training.gradient_steps):
+                model.train()
+                states, actions, rewards, dones, next_states = memory.sample(conf.training.batch_size)
 
-            # Wrap and move all values to the cpu
-            states = wrap_input(states, device)
-            actions = wrap_input(actions, device, torch.int64)
-            next_states = wrap_input(next_states, device)
-            rewards = wrap_input(rewards, device)
+                # Wrap and move all values to the gpu
+                states = wrap_input(states, device)
+                actions = wrap_input(actions, device, torch.int64)
+                next_states = wrap_input(next_states, device)
+                rewards = wrap_input(rewards, device)
 
-            # Get current q-values
-            qs = model(states)
-            qs = qs.gather(1, actions.unsqueeze(1)).squeeze(1)
+                # Get current q-values
+                qs = model(states)
+                qs = qs.gather(1, actions.unsqueeze(1)).squeeze(1)
+                qs = qs.reshape(-1, 1)
 
-            # Compute target q-values
-            next_qs = target(next_states)
-            next_qs = next_qs.max(dim=1)[0]
-            next_qs[dones] = 0.0
-            target_qs = rewards + conf.training.gamma * next_qs
+                # Compute target q-values
+                with torch.no_grad():
+                    next_qs = target(next_states)
+                    next_qs, _ = next_qs.max(dim=1)
+                    next_qs = next_qs.reshape(-1, 1)
+                    next_qs[dones] = 0.0
+                    target_qs = rewards.reshape(-1, 1) + conf.training.gamma * next_qs
 
-            # Compute loss
-            loss = loss_fn(qs, target_qs)
-            writer.add_scalar("Loss", loss.item(), it)
-            optimizer.zero_grad()
-            loss.backward()
+                # Compute loss
+                loss = loss_fn(qs, target_qs)
+                writer.add_scalar("Loss", loss.item(), it)
+                optimizer.zero_grad()
+                loss.backward()
 
-            # Clip gradients
-            nn.utils.clip_grad_norm_(model.parameters(), 1)
+                # Clip gradients
+                nn.utils.clip_grad_norm_(model.parameters(), 10)
 
-            optimizer.step()
+                optimizer.step()
 
-            # soft update
-            for target_param, local_param in zip(target.parameters(), model.parameters()):
-                target_param.data.copy_(
-                    conf.training.tau * local_param.data + (1 - conf.training.tau) * target_param.data
-                )
+                # soft update
+                for target_param, local_param in zip(target.parameters(), model.parameters()):
+                    target_param.data.copy_(
+                        conf.training.tau * local_param.data + (1 - conf.training.tau) * target_param.data
+                    )
 
         # Update the double dqn
         if it % conf.training.update_every == 0:

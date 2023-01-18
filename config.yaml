@@ -3,10 +3,10 @@ dqn:
 
 anfis:
   layer_size: 40
-  n_rules: 16
+  n_rules: 15
 
 general:
-  type: anfis
+  type: dqn
   device: cuda
 
 optimizer:
@@ -14,22 +14,26 @@ optimizer:
   lr: 1.0e-3
 
 loss:
-  type: mse
+  type: smooth_l1
 
 memory:
   max_len: 10_000
 
 training:
-  env: ALE/Breakout-v5
+  env: CartPole-v1
   n_iterations: 100_000
-  batch_size: 128
+  batch_size: 64
+  train_after: 5_000
   gamma: 0.99
-  train_every: 1
-  update_every: 4
-  tau: 1.0e-2
-  epsilon: 1.0e-1
+  train_every: 50
+  update_every: 100
+  tau: 1.0e-3
   log_every: 100
+  epsilon_decay: 10_000
+  epsilon_start: .99
+  epsilon_end: .01
+  gradient_steps: 16
 
 testing:
-  n_epiosdes: 5
-  test_every: 1_000
+  n_epiosdes: 10
+  test_every: 10_000

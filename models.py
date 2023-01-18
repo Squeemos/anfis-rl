@@ -115,7 +115,7 @@ class ANFIS(nn.Module):
         # membership = torch.clamp(membership, min=0, max=1)
 
         # Sum the values for the rules for the output from the fuzzification
-        rule_evaluation = membership.mean(dim=-1)
+        rule_evaluation = membership.sum(dim=-1)
 
         # Normalize the firing levels
         rule_evaluation /= rule_evaluation.sum()
