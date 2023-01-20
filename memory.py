@@ -9,8 +9,7 @@ class Memory(object):
         self.memory.append(experience)
 
     def sample(self, n_samples):
-        samples = random.sample(self.memory, n_samples)
-        return zip(*samples)
+        return zip(*random.sample(self.memory, n_samples))
 
     def __len__(self):
         return len(self.memory)

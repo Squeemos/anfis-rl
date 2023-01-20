@@ -13,12 +13,20 @@ except ImportError:
 import gym
 import gymnasium
 
-def wrap_input(arr, device, dtype=torch.float):
-    return torch.from_numpy(np.array(arr)).type(dtype).to(device)
+def wrap_input(arr, device, dtype=torch.float, reshape=False):
+    output = torch.from_numpy(np.array(arr)).type(dtype).to(device)
+    if reshape:
+        output = output.reshape(-1, 1)
+
+    return output
 
 def get_n_params(model):
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    
     return pytorch_total_params
+
+def epsilon_greedy(start, end, n_steps, it):
+    return max(start - (start - end) * (it / n_steps), end)
 
 class WarpFrame(gym.ObservationWrapper):
     def __init__(self, env, width=84, height=84):

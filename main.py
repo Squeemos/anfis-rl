@@ -29,6 +29,8 @@ OPTIMIZERS = {
 def main() -> int:
     conf = Config("config.yaml")
     writer = SummaryWriter(f"./runs/{conf.training.env}/{conf.general.type}/")
+    np.random.seed(conf.general.seed)
+    torch.manual_seed(conf.general.seed)
 
     env = make_env(conf.training.env)
 

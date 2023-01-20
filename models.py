@@ -31,10 +31,9 @@ class FlatExtractor(nn.Module):
         super(FlatExtractor, self).__init__()
 
         self.n_flatten = obs_space.shape[0]
-        self.layer = nn.Identity()
 
     def forward(self, obs):
-        return self.layer(obs)
+        return obs
 
 
 class DQN(nn.Module):

@@ -8,6 +8,7 @@ anfis:
 general:
   type: dqn
   device: cuda
+  seed: 42
 
 optimizer:
   type: Adam
