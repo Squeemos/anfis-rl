@@ -53,7 +53,7 @@ def main() -> int:
             model.train()
             states, actions, rewards, dones, next_states = memory.sample(32)
 
-            # Wrap and move all values to the cpu
+            # Wrap and move all values to the gpu
             states = wrap_input(states, device)
             actions = wrap_input(actions, device, torch.int64, reshape=True)
             next_states = wrap_input(next_states, device)

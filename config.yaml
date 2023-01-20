@@ -1,9 +1,19 @@
+
+# Good for CartPole-v1
 dqn:
   layer_size: 64
 
 anfis:
-  layer_size: 40
-  n_rules: 15
+  layer_size: 32
+  n_rules: 14
+
+# Good for ALE/Breakout-v5
+# dqn:
+#   layer_size: 64
+#
+# anfis:
+#   layer_size: 61
+#   n_rules: 16
 
 general:
   type: dqn
