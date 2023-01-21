@@ -14,11 +14,11 @@ from utils import wrap_input, epsilon_greedy
 def main() -> int:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = ANFIS((1,), 1, 16, 4).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=.001)
+    optimizer = optim.Adam(model.parameters(), lr=.01)
     loss_fn = nn.MSELoss()
 
     for it in range(10_000):
-        x = (0.5 - torch.rand((1_000, 1), device=device)) * 4
+        x = (0.5 - torch.rand((10_000, 1), device=device)) * 8
         y = x * x
         output = model(x)
         loss = loss_fn(output, y)
@@ -27,7 +27,7 @@ def main() -> int:
         optimizer.step()
         print(loss.item())
 
-    x = torch.linspace(-2, 2, 10_000).to(device).reshape(-1, 1)
+    x = torch.linspace(-4, 4, 10_000).to(device).reshape(-1, 1)
     r = x * x
 
     model_y = model(x).detach().clone().cpu().numpy()
