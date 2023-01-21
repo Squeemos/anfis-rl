@@ -78,10 +78,10 @@ class ANFIS(nn.Module):
         self.net = self.net = nn.Sequential(
             nn.Linear(self.feature_extractor.n_flatten, layer_size),
             nn.BatchNorm1d(layer_size),
-            #nn.ReLU(),
+            nn.ReLU(),
             nn.Linear(layer_size, layer_size),
             nn.BatchNorm1d(layer_size),
-            #nn.ReLU(),
+            nn.ReLU(),
             nn.Linear(layer_size, layer_size),
         )
 
@@ -94,9 +94,9 @@ class ANFIS(nn.Module):
         # Defuzzification Layer
         self.defuzzification = nn.Sequential(
             nn.Linear(n_rules, layer_size),
-            #nn.ReLU(),
+            # nn.ReLU(),
             nn.Linear(layer_size, layer_size),
-            #nn.ReLU(),
+            # nn.ReLU(),
             nn.Linear(layer_size, out_dim),
         )
 
@@ -105,7 +105,7 @@ class ANFIS(nn.Module):
         x = self.feature_extractor(x)
 
         # Neural Network
-        x = self.net(obs)
+        x = self.net(x)
         x = x.unsqueeze(1).unsqueeze(1)
 
         # Fuzzification

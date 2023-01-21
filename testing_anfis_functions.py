@@ -11,7 +11,13 @@ from models import DQN, ANFIS
 from memory import Memory
 from utils import wrap_input, epsilon_greedy
 
+def function(x):
+    # return torch.exp(x) * torch.sin(x)
+    return (torch.sin(x) * x**3) / 3
+    # return x**2 * torch.sin(x) * torch.tanh(x)
+
 def main() -> int:
+    torch.manual_seed(127)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = ANFIS((1,), 1, 16, 4).to(device)
     optimizer = optim.Adam(model.parameters(), lr=.01)
@@ -19,16 +25,18 @@ def main() -> int:
 
     for it in range(10_000):
         x = (0.5 - torch.rand((10_000, 1), device=device)) * 8
-        y = x * x
+        y = function(x)
         output = model(x)
         loss = loss_fn(output, y)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        print(loss.item())
+
+        if it % 100 == 0:
+            print(loss.item())
 
     x = torch.linspace(-4, 4, 10_000).to(device).reshape(-1, 1)
-    r = x * x
+    r = function(x)
 
     model_y = model(x).detach().clone().cpu().numpy()
     x = x.detach().clone().cpu().numpy()
