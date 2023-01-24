@@ -14,7 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 from config import Config
 from models import DQN, ANFIS
 from memory import Memory
-from utils import wrap_input, make_env
+from utils import wrap_input, make_env, epsilon_greedy
 
 LOSS_FNS = {
     "mse" : nn.MSELoss(),
@@ -39,15 +39,17 @@ def main() -> int:
     # Online and offline model for learning
     if conf.general.type == "dqn":
         # DQN
-        model = DQN(env.observation_space, env.action_space, conf.dqn.layer_size).to(device)
-        target = DQN(env.observation_space, env.action_space, conf.dqn.layer_size).to(device)
+        model = DQN(env.observation_space.shape, env.action_space.n, conf.dqn.layers).to(device)
+        target = DQN(env.observation_space.shape, env.action_space.n, conf.dqn.layers).to(device)
     elif conf.general.type == "anfis":
         # ANFIS
-        model = ANFIS(env.observation_space, env.action_space, conf.anfis.layer_size, conf.anfis.n_rules).to(device)
-        target = ANFIS(env.observation_space, env.action_space, conf.anfis.layer_size, conf.anfis.n_rules).to(device)
+        model = ANFIS(env.observation_space.shape, env.action_space.n, conf.anfis.layers, conf.anfis.n_rules, conf.anfis.defuzz_layers).to(device)
+        target = ANFIS(env.observation_space.shape, env.action_space.n, conf.anfis.layers, conf.anfis.n_rules, conf.anfis.defuzz_layers).to(device)
     else:
         print(f"Model type is not implemented: {conf.general.type}")
         return -1
+
+    print(model)
 
     # Don't let the target model train, saves some compute time
     target.eval()
@@ -60,55 +62,58 @@ def main() -> int:
     memory = Memory(conf.memory.max_len)
     obs, info = env.reset()
 
-    for it in range(1, conf.training.n_iterations + 1):
+    for it in range(0, conf.training.n_iterations + 1):
         if it % conf.training.log_every == 0:
             print(f"{it:7}", end="\r")
 
         # Do this for the batch norm
         model.eval()
 
-        state = wrap_input(obs, device).unsqueeze(0)
-
         # Determine if we should take random action or greedy one
-        epsilon = conf.training.epsilon_end * (conf.training.epsilon_start - conf.training.epsilon_end) * np.exp(-1.0 * it / conf.training.epsilon_decay)
+        epsilon = epsilon_greedy(conf.training.epsilon_start, conf.training.epsilon_end, conf.training.epsilon_n_decay, it)
         writer.add_scalar("Epsilon", epsilon, it)
         if np.random.random() <= epsilon:
             action = env.action_space.sample()
         else:
+            state = wrap_input(obs, device).unsqueeze(0)
             action  = model(state).argmax().item()
 
         # Act in environment and store the memory
         next_state, reward, done, truncated, info = env.step(action)
+        if done:
+            next_state = np.zeros(env.observation_space.shape)
+        memory.store([obs, action, reward, int(done), next_state])
+
+        obs = next_state
         done = done or truncated
-        memory.store([obs, action, reward, done, next_state])
 
         if done:
             obs, info = env.reset()
 
         # Experience replay and training
-        if it >= conf.training.train_after and it % conf.training.train_every == 0 and len(memory) > conf.training.batch_size:
+        if it >= conf.training.train_after:
             for _ in range(conf.training.gradient_steps):
                 model.train()
                 states, actions, rewards, dones, next_states = memory.sample(conf.training.batch_size)
 
                 # Wrap and move all values to the gpu
                 states = wrap_input(states, device)
-                actions = wrap_input(actions, device, torch.int64)
+                actions = wrap_input(actions, device, torch.int64, reshape=True)
                 next_states = wrap_input(next_states, device)
-                rewards = wrap_input(rewards, device)
+                rewards = wrap_input(rewards, device, reshape=True)
+                dones = wrap_input(dones, device, reshape=True)
 
                 # Get current q-values
                 qs = model(states)
-                qs = qs.gather(1, actions.unsqueeze(1)).squeeze(1)
+                qs = torch.gather(qs, dim=1, index=actions)
                 qs = qs.reshape(-1, 1)
 
                 # Compute target q-values
                 with torch.no_grad():
-                    next_qs = target(next_states)
-                    next_qs, _ = next_qs.max(dim=1)
+                    next_qs, _ = target(next_states).max(dim=1)
                     next_qs = next_qs.reshape(-1, 1)
-                    next_qs[dones] = 0.0
-                    target_qs = rewards.reshape(-1, 1) + conf.training.gamma * next_qs
+
+                target_qs = rewards + conf.training.gamma * (1 - dones) * next_qs
 
                 # Compute loss
                 loss = loss_fn(qs, target_qs)
@@ -117,15 +122,16 @@ def main() -> int:
                 loss.backward()
 
                 # Clip gradients
-                nn.utils.clip_grad_norm_(model.parameters(), 10)
+                nn.utils.clip_grad_norm_(model.parameters(), conf.training.grad_norm)
 
                 optimizer.step()
 
                 # soft update
-                for target_param, local_param in zip(target.parameters(), model.parameters()):
-                    target_param.data.copy_(
-                        conf.training.tau * local_param.data + (1 - conf.training.tau) * target_param.data
-                    )
+                with torch.no_grad():
+                    for target_param, local_param in zip(target.parameters(), model.parameters()):
+                        target_param.data.copy_(
+                            conf.training.tau * local_param.data + (1 - conf.training.tau) * target_param.data
+                        )
 
         # Update the double dqn
         if it % conf.training.update_every == 0:
@@ -147,8 +153,8 @@ def main() -> int:
                         state = wrap_input(obs, device).unsqueeze(0)
                         action = model(state).argmax().item()
                         obs, reward, done, truncated, info = test_env.step(action)
-                        done = done or truncated
                         cum_reward += reward
+                        done = done or truncated
 
                     rewards.append(cum_reward)
                 writer.add_scalar("Testing Mean Reward", np.mean(rewards), it)

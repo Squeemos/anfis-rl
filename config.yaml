@@ -1,49 +1,43 @@
-
 # Good for CartPole-v1
+# 24635 params
 dqn:
-  layer_size: 64
+  layers: [153, 153]
 
+# 24594 params -> rules does not affect the parameters
 anfis:
-  layer_size: 32
-  n_rules: 14
-
-# Good for ALE/Breakout-v5
-# dqn:
-#   layer_size: 64
-#
-# anfis:
-#   layer_size: 61
-#   n_rules: 16
+  layers: [128, 128]
+  n_rules: 16
+  defuzz_layers: [64, 64]
 
 general:
   type: dqn
   device: cuda
-  seed: 42
+  seed: 109
 
 optimizer:
   type: Adam
-  lr: 1.0e-3
+  lr: 1.0e-4
 
 loss:
-  type: smooth_l1
+  type: mse
 
 memory:
   max_len: 10_000
 
 training:
   env: CartPole-v1
-  n_iterations: 100_000
+  n_iterations: 70_000
   batch_size: 64
-  train_after: 5_000
   gamma: 0.99
-  train_every: 50
   update_every: 100
+  train_after: 1_000
   tau: 1.0e-3
   log_every: 100
-  epsilon_decay: 10_000
+  epsilon_n_decay: 15_000
   epsilon_start: .99
   epsilon_end: .01
-  gradient_steps: 16
+  gradient_steps: 1
+  grad_norm: 10
 
 testing:
   n_epiosdes: 10

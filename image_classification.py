@@ -4,9 +4,11 @@ from torch.nn import functional as F
 from torch import optim
 import torchvision
 
-from models import ANFIS
+from models import ANFIS, DQN
+from utils import get_n_params
 
 def main() -> int:
+    torch.manual_seed(19) # using a great prime number
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     train_loader = torch.utils.data.DataLoader(
@@ -17,8 +19,8 @@ def main() -> int:
             transform=torchvision.transforms.Compose(
             [
                 torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize((0.1307,), (0.3081,)),
-                torchvision.transforms.Resize((84, 84)),
+                torchvision.transforms.Normalize((0.5,), (0.5,)),
+                torchvision.transforms.Resize((41, 41)),
             ])
         ),
         batch_size=128,
@@ -33,8 +35,8 @@ def main() -> int:
             transform=torchvision.transforms.Compose(
             [
                 torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize((0.1307,), (0.3081,)),
-                torchvision.transforms.Resize((84, 84)),
+                torchvision.transforms.Normalize((0.5,), (0.5,)),
+                torchvision.transforms.Resize((41, 41)),
             ])
         ),
       batch_size=128,
@@ -47,7 +49,9 @@ def main() -> int:
     in_shape = tuple(example_data.shape[1:])
     out_shape = 10
 
-    model = ANFIS(in_shape, out_shape, 32, 8).to(device)
+    # Roughly similar parameters for the models
+    model = ANFIS(in_shape, out_shape, layers=[38, 38], n_rules=16, defuzz_layers=[38,38]).to(device)
+    # model = DQN(in_shape, out_shape, 64).to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=.01)
     optimizer.zero_grad()
@@ -57,7 +61,6 @@ def main() -> int:
     for it in range(100):
         for data, target in train_loader:
             output = model(data.to(device))
-            output = F.softmax(output, dim=-1)
 
             optimizer.zero_grad()
             loss = loss_fn(output, target.to(device))

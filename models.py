@@ -3,6 +3,38 @@ from torch import nn
 from torch.nn import functional as F
 from torch import optim
 
+def determine_feature_extractor(in_dim):
+    if len(in_dim) == 1:
+        return FlatExtractor(in_dim)
+    elif len(in_dim) == 3:
+        return NatureCnn(in_dim)
+    else:
+        raise NotImplementedErorr("This type of input is not supported")
+
+def create_mlp(in_dim, out_dim, layers=[], act_function=None, batch_norm=None):
+    if len(layers) == 0:
+        return nn.Sequential(
+            nn.Linear(in_dim, out_dim),
+        )
+
+    modules = [nn.Linear(in_dim, layers[0])]
+    if batch_norm is not None:
+        modules.append(batch_norm(layers[0]))
+
+    if act_function is not None:
+        modules.append(act_function())
+
+    for idx in range(0, len(layers) - 1):
+        modules.append(nn.Linear(layers[idx], layers[idx + 1]))
+        if batch_norm is not None:
+            modules.append(batch_norm(layers[idx + 1]))
+        if act_function is not None:
+            modules.append(act_function())
+
+    modules.append(nn.Linear(layers[-1], out_dim))
+
+    return nn.Sequential(*modules)
+
 class NatureCnn(nn.Module):
     '''NatureCNN that learns features of the image'''
     def __init__(self, in_dim):
@@ -35,89 +67,53 @@ class FlatExtractor(nn.Module):
     def forward(self, obs):
         return obs
 
-
 class DQN(nn.Module):
-    def __init__(self, in_dim, out_dim, layer_size):
+    def __init__(self, in_dim, out_dim, layers=[64, 64]):
         super(DQN, self).__init__()
 
         # Feature extractor
-        if len(in_dim) == 1:
-            self.feature_extractor = FlatExtractor(in_dim)
-        elif len(in_dim) == 3:
-            self.feature_extractor = NatureCnn(in_dim)
-        else:
-            raise NotImplementedErorr("This type of environment is not supported")
+        self.feature_extractor = determine_feature_extractor(in_dim)
 
         # Neural network
-        self.net = nn.Sequential(
-            nn.Linear(self.feature_extractor.n_flatten, layer_size),
-            nn.BatchNorm1d(layer_size),
-            nn.ReLU(),
-            nn.Linear(layer_size, layer_size),
-            nn.BatchNorm1d(layer_size),
-            nn.ReLU(),
-            nn.Linear(layer_size, out_dim),
-        )
+        self.net = create_mlp(self.feature_extractor.n_flatten, out_dim, layers, act_function=nn.ReLU)
 
     def forward(self, obs):
         return self.net(self.feature_extractor(obs))
 
 class ANFIS(nn.Module):
-    def __init__(self, in_dim, out_dim, layer_size, n_rules):
+    def __init__(self, in_dim, out_dim, layers=[64, 64], n_rules=8, defuzz_layers=[32, 32], membership_type="Gaussian"):
         super(ANFIS, self).__init__()
 
         # Feature extractor
-        if len(in_dim) == 1:
-            self.feature_extractor = FlatExtractor(in_dim)
-        elif len(in_dim) == 3:
-            self.feature_extractor = NatureCnn(in_dim)
-        else:
-            raise NotImplementedErorr("This type of environment is not supported")
+        self.feature_extractor = determine_feature_extractor(in_dim)
 
         # Neural Network
-        self.net = self.net = nn.Sequential(
-            nn.Linear(self.feature_extractor.n_flatten, layer_size),
-            nn.BatchNorm1d(layer_size),
-            nn.ReLU(),
-            nn.Linear(layer_size, layer_size),
-            nn.BatchNorm1d(layer_size),
-            nn.ReLU(),
-            nn.Linear(layer_size, layer_size),
-        )
+        self.net = create_mlp(self.feature_extractor.n_flatten, n_rules, layers=layers, act_function=nn.Sigmoid)
 
-        # Fuzzification Layer / Rules
-        self.centers = nn.Parameter((torch.randn(1, n_rules, layer_size) -0.5 ) * 2)
-        self.widths = nn.Parameter(torch.randn(1, n_rules, layer_size) * 2)
-        self.register_parameter("centers", self.centers)
-        self.register_parameter("widths", self.widths)
+        # Fuzzification Layer / Rules -> not a trainable parameter
+        self.register_buffer("centers", (torch.randn(n_rules, n_rules) -0.5 ) * 4)
+        self.register_buffer("widths", (torch.randn(n_rules, n_rules) * 4))
+
+        # Setup the membership type
+        self.membership_type = membership_type
 
         # Defuzzification Layer
-        self.defuzzification = nn.Sequential(
-            nn.Linear(n_rules, layer_size),
-            # nn.ReLU(),
-            nn.Linear(layer_size, layer_size),
-            # nn.ReLU(),
-            nn.Linear(layer_size, out_dim),
-        )
+        self.defuzzification = create_mlp(n_rules, out_dim, layers=defuzz_layers)
 
     def forward(self, x):
         # Extract features
         x = self.feature_extractor(x)
+        intermediate = x
 
         # Neural Network
-        x = self.net(x)
-        x = x.unsqueeze(1).unsqueeze(1)
+        x = self.net(x).unsqueeze(1)
 
         # Fuzzification
         # Apply Gaussian rules
-        membership = torch.exp(-((x - self.centers) / self.widths)**2)
-
-        # Triangular
-        # membership = torch.where((x - self.centers) < 0,
-        #                          (x - self.centers) / -self.widths,
-        #                          torch.ones_like(x) - ((x - self.centers) / self.widths)
-        # )
-        # membership = torch.clamp(membership, min=0, max=1)
+        if self.membership_type == "Gaussian":
+            membership = torch.exp(-((x - self.centers) / self.widths)**2)
+        else:
+            raise NotImplementedError(f"ANFIS with membership type <{self.membership_type}> is not supported")
 
         # Sum the values for the rules for the output from the fuzzification
         rule_evaluation = membership.sum(dim=-1)
@@ -125,8 +121,15 @@ class ANFIS(nn.Module):
         # Normalize the firing levels
         rule_evaluation /= rule_evaluation.sum()
 
-        # Defuzzification
-        defuzzification = self.defuzzification(rule_evaluation)
+        # Doesn't seem to learn, but must modify for image inputs
+        # Modify to multiply the rules times the input
+        # rule_evaluation = rule_evaluation.sum(dim=-1, keepdim=True)
 
+        # Multiply the rules by the input
+        defuzz = intermediate.unsqueeze(1) * rule_evaluation.unsqueeze(1)
+
+        # Defuzzification
         # Squeeze to remove the extra dimension
-        return defuzzification.squeeze(1)
+        defuzzification = self.defuzzification(defuzz.squeeze(1))
+
+        return defuzzification

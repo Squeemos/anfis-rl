@@ -14,16 +14,17 @@ from utils import wrap_input, epsilon_greedy
 def function(x):
     # return torch.exp(x) * torch.sin(x)
     return (torch.sin(x) * x**3) / 3
-    # return x**2 * torch.sin(x) * torch.tanh(x)
+    # return x * x
 
 def main() -> int:
-    torch.manual_seed(127)
+    # torch.manual_seed(127)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = ANFIS((1,), 1, 16, 4).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=.01)
+    model = ANFIS((1,), 1, layers=[128,128], n_rules=16, defuzz_layers=[64, 64]).to(device)
+    # model = DQN((1,), 1, layers=[153, 153]).to(device)
+    optimizer = optim.Adam(model.parameters(), lr=.001)
     loss_fn = nn.MSELoss()
 
-    for it in range(10_000):
+    for it in range(20_000):
         x = (0.5 - torch.rand((10_000, 1), device=device)) * 8
         y = function(x)
         output = model(x)
@@ -32,7 +33,7 @@ def main() -> int:
         loss.backward()
         optimizer.step()
 
-        if it % 100 == 0:
+        if it % 1_000 == 0:
             print(loss.item())
 
     x = torch.linspace(-4, 4, 10_000).to(device).reshape(-1, 1)
