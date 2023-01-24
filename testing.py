@@ -16,17 +16,12 @@ def main() -> int:
     env = make_env(conf.training.env)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    if True:
+    if False:
         model = DQN(env.observation_space.shape, env.action_space.n, conf.dqn.layers).to(device)
         target = DQN(env.observation_space.shape, env.action_space.n, conf.dqn.layers).to(device)
     else:
         model = ANFIS(env.observation_space.shape, env.action_space.n, conf.anfis.layers, conf.anfis.n_rules, conf.anfis.defuzz_layers).to(device)
         target = ANFIS(env.observation_space.shape, env.action_space.n, conf.anfis.layers, conf.anfis.n_rules, conf.anfis.defuzz_layers).to(device)
 
-
-    print(get_n_params(model))
-
 if __name__ == "__main__":
     raise SystemExit(main())
-
-model = ANFIS((1,), 1, layers=[128,128], n_rules=16, defuzz_layers=[64, 64]).to(device)

@@ -10,7 +10,7 @@ anfis:
   defuzz_layers: [64, 64]
 
 general:
-  type: dqn
+  type: anfis
   device: cuda
   seed: 109
 

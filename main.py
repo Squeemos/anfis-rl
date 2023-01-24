@@ -80,8 +80,6 @@ def main() -> int:
 
         # Act in environment and store the memory
         next_state, reward, done, truncated, info = env.step(action)
-        if done:
-            next_state = np.zeros(env.observation_space.shape)
         memory.store([obs, action, reward, int(done), next_state])
 
         obs = next_state

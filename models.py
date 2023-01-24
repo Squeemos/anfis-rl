@@ -126,10 +126,12 @@ class ANFIS(nn.Module):
         # rule_evaluation = rule_evaluation.sum(dim=-1, keepdim=True)
 
         # Multiply the rules by the input
-        defuzz = intermediate.unsqueeze(1) * rule_evaluation.unsqueeze(1)
+        defuzz = intermediate.unsqueeze(2) * rule_evaluation.unsqueeze(1)
+
+        # Sum the rules
+        defuzz = defuzz.sum(dim=1)
 
         # Defuzzification
-        # Squeeze to remove the extra dimension
-        defuzzification = self.defuzzification(defuzz.squeeze(1))
+        defuzzification = self.defuzzification(defuzz)
 
         return defuzzification
