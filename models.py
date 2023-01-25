@@ -91,6 +91,7 @@ class ANFIS(nn.Module):
         self.net = create_mlp(self.feature_extractor.n_flatten, n_rules, layers=layers, act_function=nn.Sigmoid)
 
         # Fuzzification Layer / Rules -> not a trainable parameter
+        # Will create a membership matrix for each input with each rule
         self.register_buffer("centers", (torch.randn(n_rules, n_rules) -0.5 ) * 4)
         self.register_buffer("widths", (torch.randn(n_rules, n_rules) * 4))
 

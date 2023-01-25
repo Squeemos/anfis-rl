@@ -11,9 +11,11 @@ from models import DQN, ANFIS
 from memory import Memory
 from utils import wrap_input, epsilon_greedy
 
+torch.autograd.set_detect_anomaly(True)
+
 def function(x):
-    # return torch.exp(x) * torch.sin(x)
-    return (torch.sin(x) * x**3) / 3
+    return torch.exp(x) * torch.sin(x)
+    # return (torch.sin(x) * x**3) / 3
     # return x * x
 
 def main() -> int:

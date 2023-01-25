@@ -51,7 +51,7 @@ def main() -> int:
 
     # Roughly similar parameters for the models
     model = ANFIS(in_shape, out_shape, layers=[38, 38], n_rules=16, defuzz_layers=[38,38]).to(device)
-    # model = DQN(in_shape, out_shape, 64).to(device)
+    # model = DQN(in_shape, out_shape, layers=[64, 64]).to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=.01)
     optimizer.zero_grad()
