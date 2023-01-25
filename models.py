@@ -92,11 +92,16 @@ class ANFIS(nn.Module):
 
         # Fuzzification Layer / Rules -> not a trainable parameter
         # Will create a membership matrix for each input with each rule
-        self.register_buffer("centers", (torch.randn(n_rules, n_rules) -0.5 ) * 4)
-        self.register_buffer("widths", (torch.randn(n_rules, n_rules) * 4))
+        self.register_buffer("centers", ((torch.randn(n_rules, n_rules) -0.5 ) * 2))
+        self.register_buffer("widths", (torch.randn(n_rules, n_rules) * 2))
+
+        # self.register_buffer("centers", ((torch.randn(n_rules) -0.5 ) * 2))
+        # self.register_buffer("widths", (torch.randn(n_rules) * 2))
 
         # Setup the membership type
         self.membership_type = membership_type
+        self.n_rules = n_rules
+        self.expansion = (n_rules, n_rules)
 
         # Defuzzification Layer
         self.defuzzification = create_mlp(n_rules, out_dim, layers=defuzz_layers)
@@ -113,6 +118,9 @@ class ANFIS(nn.Module):
         # Apply Gaussian rules
         if self.membership_type == "Gaussian":
             membership = torch.exp(-((x - self.centers) / self.widths)**2)
+            # membership = torch.exp(
+            #     -((x - self.centers.expand(self.expansion)) / self.widths.expand(self.expansion))**2
+            # )
         else:
             raise NotImplementedError(f"ANFIS with membership type <{self.membership_type}> is not supported")
 
