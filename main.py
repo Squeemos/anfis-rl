@@ -18,8 +18,7 @@ from utils import wrap_input, make_env, epsilon_greedy
 
 LOSS_FNS = {
     "mse" : nn.MSELoss(),
-    "huber" : nn.HuberLoss(),
-    "smooth_l1" : F.smooth_l1_loss
+    "smooth_l1" : nn.SmoothL1Loss(),
 }
 
 OPTIMIZERS = {
@@ -28,7 +27,8 @@ OPTIMIZERS = {
 
 def main() -> int:
     conf = Config("config.yaml")
-    writer = SummaryWriter(f"./runs/{conf.training.env}/{conf.general.type}/")
+    folder_path = f"{conf.training.env} - {conf.general.seed} - {conf.loss.type}"
+    writer = SummaryWriter(f"./runs/{folder_path}/{conf.general.type}/")
     np.random.seed(conf.general.seed)
     torch.manual_seed(conf.general.seed)
 

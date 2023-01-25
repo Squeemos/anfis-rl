@@ -3,16 +3,16 @@
 dqn:
   layers: [153, 153]
 
-# 24594 params -> rules does not affect the parameters
+# 24594 params
 anfis:
   layers: [128, 128]
   n_rules: 16
   defuzz_layers: [64, 64]
 
 general:
-  type: dqn
+  type: anfis
   device: cuda
-  seed: 19
+  seed: 43
 
 optimizer:
   type: Adam
@@ -26,15 +26,15 @@ memory:
 
 training:
   env: CartPole-v1
-  n_iterations: 70_000
-  batch_size: 64
+  n_iterations: 100_000
+  batch_size: 128
   gamma: 0.99
   update_every: 100
   train_after: 1_000
   tau: 1.0e-3
   log_every: 100
-  epsilon_n_decay: 15_000
-  epsilon_start: .99
+  epsilon_n_decay: 20_000
+  epsilon_start: 1.0
   epsilon_end: .01
   gradient_steps: 1
   grad_norm: 10

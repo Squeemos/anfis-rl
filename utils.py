@@ -22,11 +22,19 @@ def wrap_input(arr, device, dtype=torch.float, reshape=False):
 
 def get_n_params(model):
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    
+
     return pytorch_total_params
 
 def epsilon_greedy(start, end, n_steps, it):
     return max(start - (start - end) * (it / n_steps), end)
+
+def make_env(env_id):
+    env = gymnasium.make(env_id)
+
+    if "ALE" in env_id:
+        env = WarpFrame(env)
+
+    return env
 
 class WarpFrame(gym.ObservationWrapper):
     def __init__(self, env, width=84, height=84):
@@ -45,10 +53,4 @@ class WarpFrame(gym.ObservationWrapper):
         frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
         return frame[None, :, :]
 
-def make_env(env_id):
-    env = gymnasium.make(env_id)
-
-    if "ALE" in env_id:
-        env = WarpFrame(env)
-
-    return env
+# TODO: Vectorized Environments
