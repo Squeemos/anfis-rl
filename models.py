@@ -89,7 +89,7 @@ class ANFIS(nn.Module):
         self.feature_extractor = determine_feature_extractor(in_dim)
 
         # Neural Network
-        self.net = create_mlp(self.feature_extractor.n_flatten, n_rules, layers=layers, act_function=nn.LeakyReLU)
+        self.net = create_mlp(self.feature_extractor.n_flatten, n_rules, layers=layers, act_function=nn.ReLU)
 
         # Membership functions
         # Gaussian: Means (centers) and Standard Deviation (widths)

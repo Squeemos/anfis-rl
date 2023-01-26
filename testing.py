@@ -5,6 +5,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torch import optim
+from torchviz import make_dot
 
 from models import DQN, ANFIS
 from memory import Memory
@@ -24,7 +25,10 @@ def main() -> int:
         target = ANFIS(env.observation_space.shape, env.action_space.n, conf.anfis.layers, conf.anfis.n_rules, conf.anfis.defuzz_layers).to(device)
 
 
-    print(get_n_params(model))
+    # yhat = torch.randn((64, 4)).to(device)
+    #
+    # make_dot(model(yhat), params=dict(list(model.named_parameters()))).render("rnn_torchviz", format="png")
+    print(model)
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -165,7 +165,7 @@ def main() -> int:
 
                 test_env.close()
 
-                if means == 500 or medians == 500:
+                if medians == 500:
                     break
 
     print(f"Environment solved after {it} steps")
