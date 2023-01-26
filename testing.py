@@ -23,7 +23,7 @@ def main() -> int:
         model = ANFIS(env.observation_space.shape, env.action_space.n, conf.anfis.layers, conf.anfis.n_rules, conf.anfis.defuzz_layers).to(device)
         target = ANFIS(env.observation_space.shape, env.action_space.n, conf.anfis.layers, conf.anfis.n_rules, conf.anfis.defuzz_layers).to(device)
 
-    state = torch.randn((64, 4), device=device)
+    state = torch.randn((4, 4), device=device)
     output = model(state)
     print(output.shape)
 

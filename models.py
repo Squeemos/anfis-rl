@@ -98,15 +98,17 @@ class ANFIS(nn.Module):
 
         # Setup the membership type
         self.membership_type = membership_type
+        self.n_rules = n_rules
 
         # Defuzzification Layer
-        self.defuzzification = create_mlp(n_rules, out_dim, layers=defuzz_layers)
+        self.defuzzification = create_mlp(n_rules, out_dim, layers=defuzz_layers, act_function=nn.LeakyReLU)
 
     def forward(self, x):
         # Extract features
         x = self.feature_extractor(x)
         # Intermediate step so we can multiply the inputs by the rules later
         intermediate = x
+        batch_size = x.shape[0]
 
         # Neural Network
         x = self.net(x)
@@ -120,7 +122,7 @@ class ANFIS(nn.Module):
             raise NotImplementedError(f"ANFIS with membership type <{self.membership_type}> is not supported")
 
         # Normalize the firing levels
-        rule_evaluation = membership / membership.sum()
+        rule_evaluation = membership / membership.sum(dim=-1).reshape(-1, 1).expand((batch_size, self.n_rules))
 
         # Multiply the rules by the input
         # Makes the input be [batch_size, in_dim, 1]
