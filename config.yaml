@@ -1,9 +1,9 @@
 # Good for CartPole-v1
-# 24635 params
+# 24_635 params
 dqn:
   layers: [153, 153]
 
-# 24594 params
+# 24_626 params
 anfis:
   layers: [128, 128]
   n_rules: 16
@@ -12,7 +12,8 @@ anfis:
 general:
   type: anfis
   device: cuda
-  seed: 43
+  seed: 9
+  # 19, 43, 109, 9
 
 optimizer:
   type: Adam

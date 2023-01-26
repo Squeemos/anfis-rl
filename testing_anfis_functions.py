@@ -22,7 +22,7 @@ def function(x):
 def main() -> int:
     # torch.manual_seed(127)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = ANFIS((1,), 1, layers=[128,128], n_rules=32, defuzz_layers=[128, 128]).to(device)
+    model = ANFIS((1,), 1, layers=[128,128], n_rules=16).to(device)
     # model = DQN((1,), 1, layers=[153, 153]).to(device)
     optimizer = optim.Adam(model.parameters(), lr=.001)
     # loss_fn = nn.SmoothL1Loss()

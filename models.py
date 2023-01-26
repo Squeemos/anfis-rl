@@ -93,15 +93,17 @@ class ANFIS(nn.Module):
 
         # Membership functions
         # Gaussian: Means (centers) and Standard Deviation (widths)
-        self.register_buffer("centers", (torch.randn(n_rules) -0.5 ) * 2)
-        self.register_buffer("widths", (torch.randn(n_rules) * 2))
+        # self.register_buffer("centers", (torch.randn(n_rules) -0.5 ) * 2)
+        # self.register_buffer("widths", (torch.randn(n_rules) * 2))
+        self.register_parameter("centers", nn.Parameter((torch.randn(n_rules) -0.5 ) * 2))
+        self.register_parameter("widths", nn.Parameter((torch.randn(n_rules) * 2)))
 
         # Setup the membership type
         self.membership_type = membership_type
         self.n_rules = n_rules
 
         # Defuzzification Layer
-        self.defuzzification = create_mlp(n_rules, out_dim, layers=defuzz_layers, act_function=nn.LeakyReLU)
+        self.defuzzification = create_mlp(n_rules, out_dim, layers=defuzz_layers)
 
     def forward(self, x):
         # Extract features

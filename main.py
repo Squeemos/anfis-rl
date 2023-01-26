@@ -2,7 +2,7 @@ import gym
 import gymnasium
 
 import numpy as np
-from copy import deepcopy
+import random
 
 import torch
 from torch import nn
@@ -29,8 +29,11 @@ def main() -> int:
     conf = Config("config.yaml")
     folder_path = f"{conf.training.env} - {conf.general.seed} - {conf.loss.type}"
     writer = SummaryWriter(f"./runs/{folder_path}/{conf.general.type}/")
+
+    # Seed everything
     np.random.seed(conf.general.seed)
     torch.manual_seed(conf.general.seed)
+    random.seed(conf.general.seed)
 
     env = make_env(conf.training.env)
 
@@ -155,9 +158,17 @@ def main() -> int:
                         done = done or truncated
 
                     rewards.append(cum_reward)
-                writer.add_scalar("Testing Mean Reward", np.mean(rewards), it)
-                writer.add_scalar("Testing Median Reward", np.median(rewards), it)
+                means = np.mean(rewards)
+                medians = np.median(rewards)
+                writer.add_scalar("Testing Mean Reward", means, it)
+                writer.add_scalar("Testing Median Reward", medians, it)
+
                 test_env.close()
+
+                if means == 500 or medians == 500:
+                    break
+
+    print(f"Environment solved after {it} steps")
 
 
     env.close()
