@@ -7,9 +7,8 @@ from torch import nn
 from torch.nn import functional as F
 from torch import optim
 
-from models import DQN, ANFIS
-from memory import Memory
-from utils import wrap_input, epsilon_greedy
+from models.modules import DQN, ANFIS
+from models.utils import wrap_input, epsilon_greedy
 
 torch.autograd.set_detect_anomaly(True)
 

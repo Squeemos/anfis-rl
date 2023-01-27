@@ -20,6 +20,11 @@ def wrap_input(arr, device, dtype=torch.float, reshape=False):
 
     return output
 
+def soft_update(target, online, tau):
+    with torch.no_grad():
+        for target_param, local_param in zip(target.parameters(), online.parameters()):
+            target_param.data.copy_(tau * local_param.data + (1 - tau) * target_param.data)
+
 def get_n_params(model):
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
@@ -35,6 +40,30 @@ def make_env(env_id):
         env = WarpFrame(env)
 
     return env
+
+def create_mlp(in_dim, out_dim, layers=[], act_function=None, batch_norm=None):
+    if len(layers) == 0:
+        return nn.Sequential(
+            nn.Linear(in_dim, out_dim),
+        )
+
+    modules = [nn.Linear(in_dim, layers[0])]
+    if batch_norm is not None:
+        modules.append(batch_norm(layers[0]))
+
+    if act_function is not None:
+        modules.append(act_function())
+
+    for idx in range(0, len(layers) - 1):
+        modules.append(nn.Linear(layers[idx], layers[idx + 1]))
+        if batch_norm is not None:
+            modules.append(batch_norm(layers[idx + 1]))
+        if act_function is not None:
+            modules.append(act_function())
+
+    modules.append(nn.Linear(layers[-1], out_dim))
+
+    return nn.Sequential(*modules)
 
 class WarpFrame(gym.ObservationWrapper):
     def __init__(self, env, width=84, height=84):

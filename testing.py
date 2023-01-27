@@ -7,28 +7,11 @@ from torch.nn import functional as F
 from torch import optim
 from torchviz import make_dot
 
-from models import DQN, ANFIS
-from memory import Memory
-from utils import wrap_input, epsilon_greedy, make_env, get_n_params
-from config import Config
+from models.agents import Agent
 
 def main() -> int:
-    conf = Config("config.yaml")
-    env = make_env(conf.training.env)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    if True:
-        model = DQN(env.observation_space.shape, env.action_space.n, conf.dqn.layers).to(device)
-        target = DQN(env.observation_space.shape, env.action_space.n, conf.dqn.layers).to(device)
-    else:
-        model = ANFIS(env.observation_space.shape, env.action_space.n, conf.anfis.layers, conf.anfis.n_rules, conf.anfis.defuzz_layers).to(device)
-        target = ANFIS(env.observation_space.shape, env.action_space.n, conf.anfis.layers, conf.anfis.n_rules, conf.anfis.defuzz_layers).to(device)
-
-
-    # yhat = torch.randn((64, 4)).to(device)
-    #
-    # make_dot(model(yhat), params=dict(list(model.named_parameters()))).render("rnn_torchviz", format="png")
-    print(model)
+    agent = Agent("anfis", "CartPole-v1", [64, 64], "adam", 1e-4, "mse", 10_000, device)
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -14,7 +14,9 @@ def main() -> int:
         model = file[file.rfind("_") + 1:-4]
         dfs[f"{int(seed):03}-{model}"] = df
 
-    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+
+    n_files = len(os.listdir("./runs_graphing"))
+    fig, axs = plt.subplots(2, n_files // 2, figsize=(10, 10))
     print(dfs["109-dqn"])
 
     idx = 0

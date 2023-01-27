@@ -3,69 +3,8 @@ from torch import nn
 from torch.nn import functional as F
 from torch import optim
 
-def determine_feature_extractor(in_dim):
-    if len(in_dim) == 1:
-        return FlatExtractor(in_dim)
-    elif len(in_dim) == 3:
-        return NatureCnn(in_dim)
-    else:
-        raise NotImplementedErorr("This type of input is not supported")
-
-def create_mlp(in_dim, out_dim, layers=[], act_function=None, batch_norm=None):
-    if len(layers) == 0:
-        return nn.Sequential(
-            nn.Linear(in_dim, out_dim),
-        )
-
-    modules = [nn.Linear(in_dim, layers[0])]
-    if batch_norm is not None:
-        modules.append(batch_norm(layers[0]))
-
-    if act_function is not None:
-        modules.append(act_function())
-
-    for idx in range(0, len(layers) - 1):
-        modules.append(nn.Linear(layers[idx], layers[idx + 1]))
-        if batch_norm is not None:
-            modules.append(batch_norm(layers[idx + 1]))
-        if act_function is not None:
-            modules.append(act_function())
-
-    modules.append(nn.Linear(layers[-1], out_dim))
-
-    return nn.Sequential(*modules)
-
-class NatureCnn(nn.Module):
-    '''NatureCNN that learns features of the image'''
-    def __init__(self, in_dim):
-        super(NatureCnn, self).__init__()
-
-        self.cnn = nn.Sequential(
-            nn.Conv2d(in_dim[0], 32, kernel_size=8, stride=4, padding=0),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=0),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),
-            nn.ReLU(),
-            nn.Flatten(),
-        )
-
-        with torch.no_grad():
-            sample_obs = torch.randn((1, *in_dim)).float()
-            self.n_flatten = self.cnn(sample_obs).shape[1]
-
-    def forward(self, obs):
-        return self.cnn(obs)
-
-class FlatExtractor(nn.Module):
-    '''Does nothing but pass the input on'''
-    def __init__(self, in_dim):
-        super(FlatExtractor, self).__init__()
-
-        self.n_flatten = in_dim[0]
-
-    def forward(self, obs):
-        return obs
+from .extractors import determine_feature_extractor
+from .utils import create_mlp
 
 class DQN(nn.Module):
     def __init__(self, in_dim, out_dim, layers=[64, 64]):
