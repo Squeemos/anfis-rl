@@ -9,3 +9,5 @@ dqn layers = [153, 153]
 anfis layers = [128, 128]
 anfis rules = 16
 anfis defuzz layers = [64, 64]
+
+![Comparison](graphics/comparison_plots.png)
