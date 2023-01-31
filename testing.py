@@ -6,47 +6,59 @@ from torch import nn
 from torch.nn import functional as F
 from torch import optim
 
-from models.modules import ANFIS, DQN
-from models.utils import get_n_params
-
 def main() -> int:
     batch_size = 12
     n_rules = 100
     out_dim = 5
     in_dim = 7
+    n_antecedents = 2
     inp = torch.randn(batch_size, in_dim) * 2
 
     layer = nn.Linear(in_dim, out_dim)
 
-    outp = layer(inp)
-    print("in", inp.shape)
+    i = inp.unsqueeze(1).expand(-1, n_antecedents, -1)
+    print("in", i.shape)
+    outp = layer(i)
     print("net out", outp.shape)
 
     centers = torch.randn(out_dim, n_rules)
     widths = torch.randn(out_dim, n_rules)
-    params = torch.randn(out_dim, in_dim)
-    biases = torch.randn(out_dim, in_dim)
+    params = torch.randn(in_dim)
+    biases = torch.randn(in_dim)
 
-    outputs = outp.unsqueeze(-1).expand(-1, -1, n_rules)
+    outputs = outp
+
+    # Product t-norm
+    outputs = outputs.prod(dim=1)
+    print("outputs after t norm", outputs.shape)
+    outputs = outputs.unsqueeze(-1).expand(-1, -1, n_rules)
+    print("expanded out", outputs.shape)
 
     # sqrt(2pi)
     test = (1 / (widths * 2.50662827463)) * torch.exp(-((outputs - centers) / widths)**2 / 2)
-    print("expanded out", outputs.shape)
     print("rule eval", test.shape)
 
+    # Rule norm
     rule_eval = test / test.sum(dim=-1, keepdim=True)
     print("rule normed", rule_eval.shape)
 
-    i = inp.unsqueeze(-1).expand(-1, -1, n_rules).permute(0, 2, 1)
-    print("augmented input", i.shape)
+    # learning params
+    d = inp * params
+    print("input * params", d.shape)
 
-    defuzz = (rule_eval @ i)
-    print("input * rules", defuzz.shape)
+    # Add biases
+    e = d + biases
+    print("ip + biases", e.shape)
 
-    j = params * defuzz + biases
-    print("params * rules", j.shape)
+    print()
+    inp = e.unsqueeze(-1).expand(-1, -1, n_rules).permute(0, 2, 1)
+    print("augmented input", inp.shape)
+    print("rule normed", rule_eval.shape)
 
-    out = j.sum(dim=-1)
+    defuzz = rule_eval @ inp
+    print("defuzzed", defuzz.shape)
+
+    out = defuzz.sum(dim=-1)
     print("final output", out.shape)
 
 if __name__ == "__main__":
