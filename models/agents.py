@@ -8,7 +8,7 @@ import numpy as np
 import random
 
 from .modules import DQN, ANFIS
-from .utils import wrap_input, epsilon_greedy, make_env, soft_update
+from .utils import wrap_input, epsilon_greedy, make_env, soft_update, get_n_params
 from .memory import Memory
 
 class Agent(object):
@@ -33,7 +33,6 @@ class Agent(object):
         device,
         seed=0,
         n_rules=16,
-        defuzz_layers=[64, 64],
         writer=True,
     ):
         np.random.seed(seed)
@@ -41,9 +40,6 @@ class Agent(object):
         random.seed(seed)
 
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
-        print(f"[Using {self.device}]")
-        print(f"[Using {model_type} model]")
-        print(f"[Setup for {env_id}]")
 
         self.env_id = env_id
         self.env = make_env(self.env_id)
@@ -55,11 +51,15 @@ class Agent(object):
             self.target = DQN(self.env.observation_space.shape, self.env.action_space.n, layers).to(self.device)
         elif model_type == "anfis":
             # ANFIS
-            self.model = ANFIS(self.env.observation_space.shape, self.env.action_space.n, layers, n_rules, defuzz_layers).to(self.device)
-            self.target = ANFIS(self.env.observation_space.shape, self.env.action_space.n, layers, n_rules, defuzz_layers).to(self.device)
+            self.model = ANFIS(self.env.observation_space.shape, self.env.action_space.n, layers, n_rules).to(self.device)
+            self.target = ANFIS(self.env.observation_space.shape, self.env.action_space.n, layers, n_rules).to(self.device)
         else:
             print(f"Model type is not implemented: {conf.general.type}")
             return -1
+
+        print(f"[Using {self.device}]")
+        print(f"[Using {model_type} model with {get_n_params(self.model):,} parameters]")
+        print(f"[Setup for {env_id}]")
 
         # Optimizer, loss function, and memory for experience replay
         self.optimizer = Agent.OPTIMIZERS[optimizer](self.model.parameters(), lr=lr)

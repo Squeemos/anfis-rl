@@ -13,16 +13,16 @@ from models.utils import wrap_input, epsilon_greedy
 torch.autograd.set_detect_anomaly(True)
 
 def function(x):
-    return torch.exp(x) * torch.sin(x)
-    # return (torch.sin(x) * x**3) / 3
+    # return torch.exp(x) * torch.sin(x)
+    return (torch.sin(x) * x**3) / 3
     # return x * x
-    # return x * x * x
+    # return x ** 3
 
 def main() -> int:
     # torch.manual_seed(127)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = ANFIS((1,), 1, layers=[128,128], n_rules=16).to(device)
-    # model = DQN((1,), 1, layers=[153, 153]).to(device)
+    model = ANFIS((1,), 1, layers=[32,32], n_rules=16).to(device)
+    # model = DQN((1,), 1, layers=[32, 32]).to(device)
     optimizer = optim.Adam(model.parameters(), lr=.001)
     # loss_fn = nn.SmoothL1Loss()
     loss_fn = nn.MSELoss()

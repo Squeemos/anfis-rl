@@ -4,8 +4,7 @@ from torch.nn import functional as F
 from torch import optim
 import torchvision
 
-from models import ANFIS, DQN
-from utils import get_n_params
+from models.modules import ANFIS, DQN
 
 def main() -> int:
     torch.manual_seed(19) # using a great prime number
@@ -50,7 +49,7 @@ def main() -> int:
     out_shape = 10
 
     # Roughly similar parameters for the models
-    model = ANFIS(in_shape, out_shape, layers=[38, 38], n_rules=16, defuzz_layers=[38,38]).to(device)
+    model = ANFIS(in_shape, out_shape, layers=[128, 128], n_rules=16, device=device).to(device)
     # model = DQN(in_shape, out_shape, layers=[64, 64]).to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=.01)
