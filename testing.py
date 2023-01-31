@@ -11,7 +11,7 @@ from models.modules import ANFIS, DQN
 from models.utils import get_n_params
 
 def main() -> int:
-    batch_size = 3
+    batch_size = 2
     n_rules = 5
     out_dim = 2
     in_dim = 4
@@ -22,51 +22,24 @@ def main() -> int:
 
     outp = layer(inp)
     outp = act(outp)
-    print(inp.shape)
+    print("in", inp.shape)
+    print("net out", outp.shape)
 
     centers = torch.randn(out_dim, n_rules)
     widths = torch.randn(out_dim, n_rules)
     params = torch.randn(out_dim, n_rules)
 
-    outputs = outp.unsqueeze(-1).expand((-1, -1, n_rules))
+    outputs = outp.unsqueeze(-1).expand(-1, -1, n_rules)
 
     test = torch.exp(-((outputs - centers) / widths)**2)
+    print("expanded out", outputs.shape)
+    print("rule eval", test.shape)
 
-    print(test.shape)
+    rule_eval = test / test.sum(dim=-1, keepdim=True)
+    print("rule normed", rule_eval.shape)
 
-    # Normalized weights
-    rules = test / test.sum(dim=-1).unsqueeze(-1).expand((-1, -1, n_rules))
+    print(rule_eval.shape)
 
-    print(rules.shape)
-
-    rp = rules * params
-
-    print()
-    print()
-    x = inp.unsqueeze(-1).unsqueeze(1)
-    print(x.shape)
-
-    y = rp.unsqueeze(2)
-    print(y.shape)
-    print(y)
-
-    print()
-    print()
-    o = x * y
-    # (batch_size, out_dim, in_dim, rules)
-    print("O")
-    print(o.shape)
-    print()
-
-    a = o.reshape(-1, out_dim, n_rules, in_dim).prod(dim=-1).sum(dim=-1)
-    b = o.sum(dim=-1).prod(dim=-1)
-    c = o.reshape(-1, out_dim, n_rules, in_dim).sum(dim=-1).prod(dim=-1)
-    o = o.prod(dim=-1).sum(dim=-1)
-
-    print(a)
-    print(b)
-    print(c)
-    print(o)
 
 
 if __name__ == "__main__":
