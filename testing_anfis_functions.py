@@ -11,8 +11,8 @@ from models.modules import DQN, ANFIS
 from models.utils import wrap_input, epsilon_greedy
 
 def function(x):
-    # return torch.exp(x) * torch.sin(x)
-    return (torch.sin(x) * x**3) / 3
+    return torch.exp(x) * torch.sin(x)
+    # return (torch.sin(x) * x**3) / 3
     # return x * x
     # return x ** 3
 

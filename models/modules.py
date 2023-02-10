@@ -36,7 +36,8 @@ class ANFIS(nn.Module):
         self.register_parameter("widths", nn.Parameter(torch.rand(out_dim, n_rules) * 2))
 
         # Learning parameters
-        self.params = nn.Linear(n_rules, out_dim)
+        self.register_parameter("params", nn.Parameter(torch.randn(out_dim, n_rules) * 2))
+        self.register_parameter("biases", nn.Parameter(torch.randn(out_dim, n_rules) * 2))
 
         # Setup the membership type
         self.membership_type = membership_type
@@ -73,8 +74,9 @@ class ANFIS(nn.Module):
         defuzz = rule_evaluation * x
 
         # Learning parameters for defuzzification
-        output = self.params(defuzz)
-        # (batch_size, out_dim, out_dim)
+        # (batch_size, out_dim, n_rules)
+        output = defuzz * self.params + self.biases
 
         # Sum the rules
+        # (batch_size, out_dim)
         return output.sum(dim=-1)
