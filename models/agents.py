@@ -54,7 +54,7 @@ class Agent(object):
             self.model = ANFIS(self.env.observation_space.shape, self.env.action_space.n, layers, n_rules).to(self.device)
             self.target = ANFIS(self.env.observation_space.shape, self.env.action_space.n, layers, n_rules).to(self.device)
         else:
-            print(f"Model type is not implemented: {conf.general.type}")
+            print(f"Model type is not implemented: {model_type}")
             return -1
 
         print(f"[Using {self.device}]")

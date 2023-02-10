@@ -16,11 +16,10 @@ def main() -> int:
 
 
     n_files = len(os.listdir("./runs_graphing"))
-    fig, axs = plt.subplots(2, n_files // 2, figsize=(10, 10))
-    print(dfs["109-dqn"])
+    fig, axs = plt.subplots(2, (n_files // 2) // 2, figsize=(10, 10))
 
     idx = 0
-    for idx, seed in enumerate(["009", "019", "043", "109"]):
+    for idx, seed in enumerate(["009", "042", "109", "131"]):
         specific_keys = [x for x in dfs.keys() if seed in x]
         anfis_key = specific_keys[0]
         dqn_key = specific_keys[1]
@@ -33,7 +32,7 @@ def main() -> int:
         axs[x, y].xaxis.set_major_formatter(ticker.FormatStrFormatter("%0.0e"))
 
     for ax in axs.flat:
-        ax.set(xlabel="Training Iterations", ylabel="Median Reward Over 10 Episodes")
+        ax.set(xlabel="Training Iterations", ylabel="Mean Reward Over 10 Episodes")
         ax.label_outer()
 
     plt.legend()
