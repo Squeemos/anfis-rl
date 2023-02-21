@@ -21,7 +21,7 @@ class DQN(nn.Module):
         return x
 
 class ANFIS(nn.Module):
-    def __init__(self, in_dim, out_dim, layers=[64, 64], n_rules=8, membership_type="Gaussian"):
+    def __init__(self, in_dim, out_dim, layers=[64, 64], n_rules=8, membership_type="Gaussian", normal_dis_factor=2.0):
         super(ANFIS, self).__init__()
 
         # Feature extractor
@@ -32,12 +32,12 @@ class ANFIS(nn.Module):
 
         # Membership functions
         # Gaussian: Means (centers) and Standard Deviation (widths)
-        self.register_parameter("centers", nn.Parameter(torch.randn(out_dim, n_rules) * 2))
-        self.register_parameter("widths", nn.Parameter(torch.rand(out_dim, n_rules) * 2))
+        self.register_parameter("centers", nn.Parameter(torch.randn(out_dim, n_rules) * normal_dis_factor))
+        self.register_parameter("widths", nn.Parameter(torch.rand(out_dim, n_rules) * normal_dis_factor))
 
         # Learning parameters
-        self.register_parameter("params", nn.Parameter(torch.randn(out_dim, n_rules) * 2))
-        self.register_parameter("biases", nn.Parameter(torch.randn(out_dim, n_rules) * 2))
+        self.register_parameter("params", nn.Parameter(torch.randn(out_dim, n_rules) * normal_dis_factor))
+        self.register_parameter("biases", nn.Parameter(torch.randn(out_dim, n_rules) * normal_dis_factor))
 
         # Setup the membership type
         self.membership_type = membership_type
@@ -59,8 +59,29 @@ class ANFIS(nn.Module):
         # Apply Gaussian rules
         if self.membership_type == "Gaussian":
             # (batch_size, out_dim, n_rules)
-            gauss = torch.exp(-((x - self.centers) / self.widths)**2 / 2)
+            gauss = (-((x - self.centers)**2) / (2 * self.widths**2))
             membership = torch.exp(gauss)
+        elif self.membership_type == "Triangular":
+            lefts = self.centers - self.widths
+            rights = self.centers + self.widths
+
+            print(x.shape)
+            print(lefts.shape)
+            print(rights.shape)
+
+            membership = x.squeeze(1).clone()
+            membership[membership < rights] = 0
+            membership[membership > lefts] = 0
+
+            left_mask = (membership >= lefts) & (membership < self.centers)
+            right_mask = (membership >= self.centers) & (membership <= rights)
+            print(left_mask)
+            print(right_mask)
+
+            membership[left_mask] = (membership[left_mask] - lefts[left_mask]) / (self.centers[left_mask] - lefts[left_mask])
+            membership[right_mask] = (rights[right_mask] - membership[right_mask]) / (rights[right_mask] - self.centers[right_mask])
+
+
         else:
             # TODO: Add in other membership functions
             raise NotImplementedError(f"ANFIS with membership type <{self.membership_type}> is not supported")

@@ -49,10 +49,10 @@ def main() -> int:
     out_shape = 10
 
     # Roughly similar parameters for the models
-    model = ANFIS(in_shape, out_shape, layers=[128, 128], n_rules=16, device=device).to(device)
+    model = ANFIS(in_shape, out_shape, layers=[128, 128], n_rules=16).to(device)
     # model = DQN(in_shape, out_shape, layers=[64, 64]).to(device)
 
-    optimizer = optim.Adam(model.parameters(), lr=.01)
+    optimizer = optim.Adam(model.parameters(), lr=.001)
     optimizer.zero_grad()
     loss_fn = nn.CrossEntropyLoss()
 
