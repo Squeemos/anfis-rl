@@ -11,15 +11,15 @@ from models.modules import DQN, ANFIS
 from models.utils import wrap_input, epsilon_greedy
 
 def function(x):
-    return torch.exp(x) * torch.sin(x)
-    # return (torch.sin(x) * x**3) / 3
+    # return torch.exp(x) * torch.sin(x)
+    return (torch.sin(x) * x**3) / 3
     # return x * x
     # return x ** 3
 
 def main() -> int:
     # torch.manual_seed(127)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = ANFIS((1,), 1, layers=[64,64], n_rules=8, membership_type="Triangular").to(device)
+    model = ANFIS((1,), 1, layers=[64,64], n_rules=32, membership_type="Gaussian").to(device)
     # model = DQN((1,), 1, layers=[32, 32]).to(device)
     optimizer = optim.Adam(model.parameters(), lr=.001)
     # loss_fn = nn.SmoothL1Loss()

@@ -10,9 +10,9 @@ from models.modules import ANFIS
 
 def main() -> int:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = ANFIS((2,), 3, layers=[32,32], n_rules=8, membership_type="Triangular").to(device)
+    model = ANFIS((1,), 2, layers=[32,32], n_rules=8, membership_type="Triangular").to(device)
 
-    sample_input = torch.randn((1, 2), device=device) * 8
+    sample_input = torch.randn((3, 1), device=device) * 8
     out = model(sample_input)
     # print(out)
 

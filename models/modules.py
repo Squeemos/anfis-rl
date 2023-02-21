@@ -62,24 +62,22 @@ class ANFIS(nn.Module):
             gauss = (-((x - self.centers)**2) / (2 * self.widths**2))
             membership = torch.exp(gauss)
         elif self.membership_type == "Triangular":
-            lefts = self.centers - self.widths
-            rights = self.centers + self.widths
+            batch_size = x.shape[0]
+            centers = self.centers.unsqueeze(0).expand(batch_size, -1, -1)
+            lefts = (self.centers - self.widths).expand(batch_size, -1, -1)
+            rights = (self.centers + self.widths).expand(batch_size, -1, -1)
 
-            print(x.shape)
-            print(lefts.shape)
-            print(rights.shape)
-
-            membership = x.squeeze(1).clone()
-            membership[membership < rights] = 0
-            membership[membership > lefts] = 0
+            membership = x.clone()
+            membership[membership > rights] = 0
+            membership[membership < lefts] = 0
 
             left_mask = (membership >= lefts) & (membership < self.centers)
             right_mask = (membership >= self.centers) & (membership <= rights)
-            print(left_mask)
-            print(right_mask)
 
-            membership[left_mask] = (membership[left_mask] - lefts[left_mask]) / (self.centers[left_mask] - lefts[left_mask])
-            membership[right_mask] = (rights[right_mask] - membership[right_mask]) / (rights[right_mask] - self.centers[right_mask])
+            top = (membership[left_mask] - lefts[left_mask])
+
+            membership[left_mask] = (membership[left_mask] - lefts[left_mask]) / (centers[left_mask] - lefts[left_mask])
+            membership[right_mask] = (rights[right_mask] - membership[right_mask]) / (rights[right_mask] - centers[right_mask])
 
 
         else:
