@@ -7,14 +7,19 @@ from torch import nn
 from torch.nn import functional as F
 from torch import optim
 
-from models.modules import DQN, ANFIS
+from models.dqn import DQN
+from models.anfis import ANFIS
 from models.utils import wrap_input, epsilon_greedy
 
+from graph_anfis_functions import plot_anfis_rules
+
 def function(x):
-    return torch.exp(x) * torch.sin(x)
+    # return torch.exp(x) * torch.sin(x)
     # return (torch.sin(x) * x**3) / 3
-    # return x * x
-    # return x ** 3
+    # return x**2
+    # return x + 2
+    # return x**3
+    return (((torch.sin(x) * x**3) / 3) * (torch.exp(-x) / (.01 + torch.exp(-x)))) / 2
 
 def main() -> int:
     # torch.manual_seed(127)
@@ -25,8 +30,12 @@ def main() -> int:
     # loss_fn = nn.SmoothL1Loss()
     loss_fn = nn.MSELoss()
 
-    for it in range(20_000):
-        x = (0.5 - torch.rand((1_000, 1), device=device)) * 8
+    plot_anfis_rules(model)
+
+    domain = 10
+
+    for it in range(40_000):
+        x = (0.5 - torch.rand((1_000, 1), device=device)) * (2 * domain)
         y = function(x)
         output = model(x)
         loss = loss_fn(output, y)
@@ -37,7 +46,7 @@ def main() -> int:
         if it % 1_000 == 0:
             print(loss.item())
 
-    x = torch.linspace(-4, 4, 10_000).to(device).reshape(-1, 1)
+    x = torch.linspace(-domain, domain, 10_000).to(device).reshape(-1, 1)
     r = function(x)
 
     model_y = model(x).detach().clone().cpu().numpy()
@@ -48,6 +57,8 @@ def main() -> int:
     plt.plot(x, model_y)
     plt.plot(x, real_y)
     plt.show()
+
+    plot_anfis_rules(model)
     return 0
 
 if __name__ == "__main__":

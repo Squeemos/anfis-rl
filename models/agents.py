@@ -7,7 +7,8 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import random
 
-from .modules import DQN, ANFIS
+from .dqn import DQN
+from .anfis import ANFIS
 from .utils import wrap_input, epsilon_greedy, make_env, soft_update, get_n_params
 from .memory import Memory
 
@@ -60,6 +61,7 @@ class Agent(object):
         print(f"[Using {self.device}]")
         print(f"[Using {model_type} model with {get_n_params(self.model):,} parameters]")
         print(f"[Setup for {env_id}]")
+        print(f"[Using seed {seed}]")
 
         # Optimizer, loss function, and memory for experience replay
         self.optimizer = Agent.OPTIMIZERS[optimizer](self.model.parameters(), lr=lr)
@@ -140,16 +142,17 @@ class Agent(object):
                     rewards = wrap_input(rewards, self.device, reshape=True)
                     dones = wrap_input(dones, self.device, reshape=True)
 
-                    # Get current q-values
+                    # Get current q-values from online
                     qs = self.model(states)
                     qs = torch.gather(qs, dim=1, index=actions)
                     qs = qs.reshape(-1, 1)
 
-                    # Compute target q-values
+                    # Compute next q-values from offline
                     with torch.no_grad():
                         next_qs, _ = self.target(next_states).max(dim=1)
                         next_qs = next_qs.reshape(-1, 1)
 
+                    # Target Q value calculation
                     target_qs = rewards + gamma * (1 - dones) * next_qs
 
                     # Compute loss
@@ -177,8 +180,7 @@ class Agent(object):
                 with torch.no_grad():
                     self.model.eval()
                     rewards = []
-                    # Make a copy so we can interact with that on our own without
-                    # messing up the training
+                    # Make a copy so we can interact without messing up the training
                     test_env  = make_env(self.env_id)
                     for episode in range(testing_episodes):
                         done = False
