@@ -15,8 +15,27 @@ from graph_anfis_functions import plot_anfis_rules
 
 def main() -> int:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = ANFIS((1,), 1, layers=[64,64], n_rules=32, membership_type="Gaussian").to(device)
-    # model = DQN((1,), 1, layers=[32, 32]).to(device)
+
+    functions = [
+        lambda x : (torch.sin(x) * x**3) / 3,
+        lambda x : x**2,
+        lambda x : torch.sin(2 * torch.sin(2 * torch.sin(2 * torch.sin(x)))),
+        lambda x : torch.log(torch.abs(x)) * torch.sin(x),
+        lambda x : (((torch.sin(x) * x**3) / 3) * (torch.exp(-x) / (.01 + torch.exp(-x)))) / 2,
+    ]
+
+    fn_number = 0
+    function = functions[fn_number]
+    anfis = False
+    show_anfis_rules = False
+    domain = 5
+
+    # Same size models
+    if anfis:
+        model = ANFIS((1,), 1, layers=[64,64], n_rules=16, membership_type="Gaussian").to(device)
+    else:
+        model = DQN((1,), 1, layers=[64, 65]).to(device)
+
     optimizer = optim.Adam(model.parameters(), lr=.001)
     # loss_fn = nn.SmoothL1Loss()
     loss_fn = nn.MSELoss()
