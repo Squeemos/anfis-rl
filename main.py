@@ -11,7 +11,7 @@ from config import get_config
 
 def main() -> int:
     args = get_config().parse_args()
-    
+
     agent = Agent(
         args.model,
         args.env,

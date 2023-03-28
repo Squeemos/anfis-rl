@@ -9,20 +9,11 @@ from torch import optim
 
 from models.dqn import DQN
 from models.anfis import ANFIS
-from models.utils import wrap_input, epsilon_greedy
+from models.utils import wrap_input, epsilon_greedy, get_n_params
 
 from graph_anfis_functions import plot_anfis_rules
 
-def function(x):
-    # return torch.exp(x) * torch.sin(x)
-    # return (torch.sin(x) * x**3) / 3
-    # return x**2
-    # return x + 2
-    # return x**3
-    return (((torch.sin(x) * x**3) / 3) * (torch.exp(-x) / (.01 + torch.exp(-x)))) / 2
-
 def main() -> int:
-    # torch.manual_seed(127)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = ANFIS((1,), 1, layers=[64,64], n_rules=32, membership_type="Gaussian").to(device)
     # model = DQN((1,), 1, layers=[32, 32]).to(device)
@@ -30,12 +21,11 @@ def main() -> int:
     # loss_fn = nn.SmoothL1Loss()
     loss_fn = nn.MSELoss()
 
-    plot_anfis_rules(model)
+    if show_anfis_rules:
+        plot_anfis_rules(model)
 
-    domain = 10
-
-    for it in range(40_000):
-        x = (0.5 - torch.rand((1_000, 1), device=device)) * (2 * domain)
+    for it in range(20_000):
+        x = (0.5 - torch.rand((500, 1), device=device)) * 2 * domain
         y = function(x)
         output = model(x)
         loss = loss_fn(output, y)
@@ -56,9 +46,13 @@ def main() -> int:
     fig = plt.figure(figsize=(10, 10))
     plt.plot(x, model_y)
     plt.plot(x, real_y)
-    plt.show()
+    plt.title(f"MSE: {loss_fn(torch.from_numpy(model_y), torch.from_numpy(real_y)).item()}")
+    plt.savefig(f"./graphics/{fn_number}_{domain}_{'anfis' if anfis else 'dqn'}.png")
 
-    plot_anfis_rules(model)
+    print(f"\n")
+
+    if show_anfis_rules:
+        plot_anfis_rules(model)
     return 0
 
 if __name__ == "__main__":

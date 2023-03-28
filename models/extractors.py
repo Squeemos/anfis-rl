@@ -10,7 +10,7 @@ def determine_feature_extractor(in_dim):
     elif len(in_dim) == 3:
         return NatureCnn(in_dim)
     else:
-        raise NotImplementedErorr("This type of input is not supported")
+        raise NotImplementedError("This type of input is not supported")
 
 class NatureCnn(nn.Module):
     '''NatureCNN that learns features of the image'''

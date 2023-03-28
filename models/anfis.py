@@ -54,7 +54,6 @@ class ANFIS(nn.Module):
         # Fuzzification
         # Apply Gaussian rules
         if self.membership_type == "Gaussian":
-            # We ignore the (1 / std * sqrt(2 * pi))
             gauss = (-(x - self.centers)**2 / (2 * self.widths**2))
 
             # (batch_size, out_dim, n_rules)
@@ -63,31 +62,16 @@ class ANFIS(nn.Module):
         elif self.membership_type == "Triangular":
             batch_size = x.shape[0]
             # Get right/left points of the triangles
-            lefts = self.centers - self.left_widths
-            rights = self.centers + self.right_widths
-
-            lefts = lefts.expand(batch_size, -1, -1)
-            rights = rights.expand(batch_size, -1, -1)
+            # (batch_size, out_dim, n_rules)
+            lefts = (self.centers - self.left_widths).expand(batch_size, -1, -1)
+            rights = (self.centers + self.right_widths).expand(batch_size, -1, -1)
             centers = self.centers.expand(batch_size, -1, -1)
 
-            # Maybe swap to using torch.fmin instead (might save some compute time)
-            # triangular_mf = torch.fmax(torch.fmin((x - a) / (b - a), (c - x) / (c - b)), torch.tensor(0.0))
-
-            # Remove the first dimension because it's not needed
+            # Clone the membership
             membership = x.clone()
 
-            # Mask out the values that aren't inside the triangles
-            membership[membership < rights] = 0
-            membership[membership > lefts] = 0
-
-            # Create a mask for the values inside the specific portions of the triangle
-            left_mask = (membership >= lefts) & (membership < centers)
-            right_mask = (membership >= centers) & (membership <= rights)
-
-            # Apply the mask and calculate based on the form
-            # (batch_size, out_dim, n_rules)
-            membership[left_mask] = (membership[left_mask] - lefts[left_mask]) / (centers[left_mask] - lefts[left_mask])
-            membership[right_mask] = (rights[right_mask] - membership[right_mask]) / (rights[right_mask] - centers[right_mask])
+            # Perform the membership function
+            membership = torch.fmax(torch.fmin((membership - lefts) / (centers - lefts), (rights - membership) / (rights - centers)), torch.tensor(0.0))
 
         # Normalize the firing levels
         # (batch_size, out_dim, n_rules)
