@@ -41,7 +41,7 @@ def make_env(env_id):
 
     return env
 
-def create_mlp(in_dim, out_dim, layers=[], act_function=None):
+def create_mlp(in_dim, out_dim, layers=[], act_function=None, normalization_function=None):
     # If there is no layer list, single input/output layer
     if len(layers) == 0:
         return nn.Sequential(
@@ -59,6 +59,9 @@ def create_mlp(in_dim, out_dim, layers=[], act_function=None):
     for idx in range(0, len(layers) - 1):
         # Connect current layer with next layer
         modules.append(nn.Linear(layers[idx], layers[idx + 1]))
+
+        if normalization_function is not None:
+            modules.append(normalization_function(layers[idx + 1]))
 
         # Add an act function
         if act_function is not None:

@@ -34,5 +34,5 @@ def get_config():
     parser.add_argument("-tau", default=1e-3, type=float)
     parser.add_argument("-gn", "--grad-norm", default=10, type=int)
     parser.add_argument("-pu", "--print_updates", default=True, type=bool)
-    
-    return parser
+
+    return parser.parse_args()

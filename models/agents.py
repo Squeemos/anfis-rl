@@ -14,12 +14,14 @@ from .memory import Memory
 
 class Agent(object):
     LOSS_FNS = {
-        "mse" : nn.MSELoss(),
-        "smooth_l1" : nn.SmoothL1Loss(),
+        "mse": nn.MSELoss(),
+        "smooth_l1": nn.SmoothL1Loss(),
     }
 
     OPTIMIZERS = {
         "adam": optim.Adam,
+        "adagrad": optim.Adagrad,
+        "rmsprop": optim.RMSprop,
     }
 
     def __init__(

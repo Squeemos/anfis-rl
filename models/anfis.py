@@ -7,14 +7,28 @@ from .extractors import determine_feature_extractor
 from .utils import create_mlp
 
 class ANFIS(nn.Module):
-    def __init__(self, in_dim, out_dim, layers=[64, 64], n_rules=8, membership_type="Gaussian", normal_dis_factor=2.0):
+    def __init__(self,
+            in_dim,
+            out_dim,
+            layers=[64, 64],
+            n_rules=8,
+            membership_type="Gaussian",
+            normal_dis_factor=2.0,
+            order=1,
+            normalize_rules=True,
+        ):
         super(ANFIS, self).__init__()
 
         # Feature extractor
         self.feature_extractor = determine_feature_extractor(in_dim)
 
         # Neural Network
-        self.net = create_mlp(self.feature_extractor.n_flatten, out_dim, layers=layers, act_function=nn.ReLU)
+        self.net = create_mlp(
+            self.feature_extractor.n_flatten,
+            out_dim,
+            layers=layers,
+            act_function=nn.ReLU,
+        )
 
         # Membership functions
         if membership_type == "Gaussian":
@@ -22,7 +36,7 @@ class ANFIS(nn.Module):
             self.register_parameter("centers", nn.Parameter(torch.randn(out_dim, n_rules) * normal_dis_factor))
             self.register_parameter("widths", nn.Parameter(torch.rand(out_dim, n_rules) * normal_dis_factor))
         elif membership_type == "Triangular":
-            # Centers (centers), and left/right points (center +- width)
+            # Centers (centers), and left/right points (center +/- width)
             self.register_parameter("centers", nn.Parameter(torch.randn(out_dim, n_rules) * normal_dis_factor))
             self.register_parameter("left_widths", nn.Parameter(torch.rand(out_dim, n_rules) * normal_dis_factor))
             self.register_parameter("right_widths", nn.Parameter(torch.rand(out_dim, n_rules) * normal_dis_factor))
@@ -31,33 +45,35 @@ class ANFIS(nn.Module):
             raise NotImplementedError(f"ANFIS with membership type <{self.membership_type}> is not supported")
             return -1
 
-        # Learning parameters
-        self.register_parameter("params", nn.Parameter(torch.randn(out_dim, n_rules) * normal_dis_factor))
-        self.register_parameter("biases", nn.Parameter(torch.randn(out_dim, n_rules) * normal_dis_factor))
+        self.order = order
+        if order == 1:
+            # Learning parameters
+            # Jang paper
+            self.register_parameter("params", nn.Parameter(torch.randn(out_dim, n_rules) * normal_dis_factor))
+            self.register_parameter("biases", nn.Parameter(torch.randn(out_dim, n_rules) * normal_dis_factor))
 
         # Setup the membership type
         self.membership_type = membership_type
         self.n_rules = n_rules
+        self.normalize_rules = normalize_rules
 
     def forward(self, x):
         # Extract features
         x = self.feature_extractor(x)
 
         # Neural Network
-        # (batch_size, n_rules)
+        # (batch_size, out_dim)
         x = self.net(x)
 
         # Expand for broadcasting with rules
-        # (batch_size, in_dim, n_rules)
+        # (batch_size, out_dim, n_rules)
         x = x.unsqueeze(-1).expand(-1, -1, self.n_rules)
 
         # Fuzzification
         # Apply Gaussian rules
         if self.membership_type == "Gaussian":
-            gauss = (-(x - self.centers)**2 / (2 * self.widths**2))
-
             # (batch_size, out_dim, n_rules)
-            membership = torch.exp(gauss)
+            membership = torch.exp((-(x - self.centers)**2) / (2 * self.widths**2))
 
         elif self.membership_type == "Triangular":
             batch_size = x.shape[0]
@@ -73,17 +89,25 @@ class ANFIS(nn.Module):
             # Perform the membership function
             membership = torch.fmax(torch.fmin((membership - lefts) / (centers - lefts), (rights - membership) / (rights - centers)), torch.tensor(0.0))
 
-        # Normalize the firing levels
-        # (batch_size, out_dim, n_rules)
-        rule_evaluation = membership / membership.sum(dim=-1, keepdim=True)
+        # If the rules are going to be normalized
+        if self.normalize_rules:
+            # Normalize the firing levels
+            # (batch_size, out_dim, n_rules)
+            rule_evaluation = membership / membership.sum(dim=-1, keepdim=True)
+        else:
+            # (batch_size, out_dim, n_rules)
+            rule_evaluation = membership
 
-        # Multiply input by the fuzzy rules
-        # (batch_size, out_dim, n_rules)
-        defuzz = rule_evaluation * x
+        # Multiply the input by the learnable parameters and add the biases
+        # (batch_size, in_dim, n_rules)
+        if self.order == 1:
+            defuzz = x * self.params + self.biases
+        else:
+            defuzz = x
 
-        # Learning parameters for defuzzification
+        # Multiply the rules by the fuzzified input
         # (batch_size, out_dim, n_rules)
-        output = defuzz * self.params + self.biases
+        output = rule_evaluation * defuzz
 
         # Sum the rules
         # (batch_size, out_dim)
@@ -101,7 +125,8 @@ class ANFIS(nn.Module):
             repr_str += f"  (left_widths): {self.left_widths.shape, self.left_widths.dtype}\n"
             repr_str += f"  (right_widths): {self.right_widths.shape, self.right_widths.dtype}\n"
 
-        repr_str += f"  (learnable_params): {self.params.shape, self.params.dtype}\n"
-        repr_str += f"  (learnable_biases): {self.biases.shape, self.biases.dtype}\n)"
+        if self.order == 1:
+            repr_str += f"  (learnable_params): {self.params.shape, self.params.dtype}\n"
+            repr_str += f"  (learnable_biases): {self.biases.shape, self.biases.dtype}\n)"
 
         return repr_str
