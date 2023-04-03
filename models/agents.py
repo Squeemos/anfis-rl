@@ -34,9 +34,10 @@ class Agent(object):
         loss_fn,
         replay_buffer_size,
         device,
-        seed=0,
-        n_rules=16,
-        writer=True,
+        normal_dis_factor,
+        seed,
+        n_rules,
+        writer,
     ):
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -54,8 +55,8 @@ class Agent(object):
             self.target = DQN(self.env.observation_space.shape, self.env.action_space.n, layers).to(self.device)
         elif model_type == "anfis":
             # ANFIS
-            self.model = ANFIS(self.env.observation_space.shape, self.env.action_space.n, layers, n_rules).to(self.device)
-            self.target = ANFIS(self.env.observation_space.shape, self.env.action_space.n, layers, n_rules).to(self.device)
+            self.model = ANFIS(self.env.observation_space.shape, self.env.action_space.n, layers, n_rules, normal_dis_factor=normal_dis_factor).to(self.device)
+            self.target = ANFIS(self.env.observation_space.shape, self.env.action_space.n, layers, n_rules, normal_dis_factor=normal_dis_factor).to(self.device)
         else:
             print(f"Model type is not implemented: {model_type}")
             return -1
@@ -63,6 +64,7 @@ class Agent(object):
         print(f"[Using {self.device}]")
         print(f"[Using {model_type} model with {get_n_params(self.model):,} parameters]")
         print(f"[Setup for {env_id}]")
+        print(f"[Using {self.model.feature_extractor.__class__} as feature extractor]")
         print(f"[Using seed {seed}]")
 
         # Optimizer, loss function, and memory for experience replay
@@ -93,13 +95,13 @@ class Agent(object):
         gamma=0.99,
         gradient_steps=1,
         tau=1e-3,
-        grad_norm=10,
+        grad_norm=5,
         print_updates=True,
     ):
         # Reset the env
         obs, info = self.env.reset()
         # For printing updates
-        format_string = len(str(n_iterations + 1))
+        format_string = f"{len(str(n_iterations + 1)) + 1},"
 
         for it in range(0, n_iterations + 1):
             if print_updates:
@@ -166,7 +168,7 @@ class Agent(object):
                     loss.backward()
 
                     # Clip gradients
-                    nn.utils.clip_grad_norm_(self.model.parameters(), grad_norm)
+                    nn.utils.clip_grad_norm_(self.model.parameters(), grad_norm, error_if_nonfinite=True)
 
                     self.optimizer.step()
 

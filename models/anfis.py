@@ -6,6 +6,18 @@ from torch import optim
 from .extractors import determine_feature_extractor
 from .utils import create_mlp
 
+def vanishing_gradient_detection(grad):
+    mean_grad = grad.mean()
+    std_grad = grad.std()
+
+    if std_grad < 1e-5 or mean_grad < 1e-5 or torch.any(grad < 1e-5):
+        print("Vanishing gradients detected")
+        print(mean_grad)
+        print(std_grad)
+        print(grad)
+        input()
+
+
 class ANFIS(nn.Module):
     def __init__(self,
             in_dim,
@@ -16,6 +28,7 @@ class ANFIS(nn.Module):
             normal_dis_factor=2.0,
             order=1,
             normalize_rules=True,
+            debug_vanishing=True,
         ):
         super(ANFIS, self).__init__()
 
@@ -56,6 +69,25 @@ class ANFIS(nn.Module):
         self.membership_type = membership_type
         self.n_rules = n_rules
         self.normalize_rules = normalize_rules
+
+        # Debugging for vanishing gradients
+        if debug_vanishing == True:
+            layer_hook_fn = lambda module, grad_input, grad_output: vanishing_gradient_detection(grad_input[0])
+            parameter_hook_fn = lambda grad: vanishing_gradient_detection(grad)
+
+            for layer in self.net:
+                layer.register_backward_hook(layer_hook_fn)
+
+            if membership_type == "Gaussian":
+                self.centers.register_hook(parameter_hook_fn)
+                self.widths.register_hook(parameter_hook_fn)
+            elif membership_type == "Triangular":
+                self.centers.register_hook(parameter_hook_fn)
+                self.left_widths.register_hook(parameter_hook_fn)
+                self.right_widths.register_hook(parameter_hook_fn)
+
+            self.params.register_hook(parameter_hook_fn)
+            self.biases.register_hook(parameter_hook_fn)
 
     def forward(self, x):
         # Extract features

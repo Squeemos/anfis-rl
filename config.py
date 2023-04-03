@@ -18,6 +18,7 @@ def get_config():
     parser.add_argument("-s", "--seed", default=0, type=int)
     parser.add_argument("-nr", "--n-rules", default=16, type=int)
     parser.add_argument("-w", "--writer", default=True, type=bool)
+    parser.add_argument("-ndf", "--normal-dis-factor", default=2.0, type=float)
 
     # Model training
     parser.add_argument("-ni", "--n-iterations", default=100_000, type=int)

@@ -42,12 +42,12 @@ def main() -> int:
         6 : lambda x: blancmange(x, 20).to(x.device).reshape(-1, 1),
     }
 
-    fn_number = 6
+    fn_number = 3
     function = functions[fn_number]
     anfis = True
     show_anfis_rules = False
     # [-domain, domain]
-    domain = 1
+    domain = 5
     training_vals = 1_000
     layer_size = 16
     n_layers = 2

@@ -21,6 +21,7 @@ def main() -> int:
         args.loss_fn,
         args.replay_buffer_size,
         args.device,
+        args.normal_dis_factor,
         args.seed,
         args.n_rules,
         args.writer,
