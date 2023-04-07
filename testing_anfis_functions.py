@@ -38,14 +38,13 @@ def main() -> int:
         2 : lambda x : torch.sin(2 * torch.sin(2 * torch.sin(2 * torch.sin(x)))),
         3 : lambda x: torch.log(torch.abs(x)) * torch.sin(x),
         4 : lambda x: (((torch.sin(x) * x**3) / 3) * (torch.exp(-x) / (.01 + torch.exp(-x)))) / 2,
-        5 : lambda x: weierstrass(x, .5, 3, 100).to(x.device).reshape(-1, 1),
-        6 : lambda x: blancmange(x, 20).to(x.device).reshape(-1, 1),
+        5 : lambda x: weierstrass(x, .5, 3, 100).reshape(-1, 1),
+        6 : lambda x: blancmange(x, 20).reshape(-1, 1),
     }
 
-    fn_number = 3
+    fn_number = 6
     function = functions[fn_number]
     anfis = True
-    show_anfis_rules = False
     # [-domain, domain]
     domain = 5
     training_vals = 1_000
@@ -61,7 +60,7 @@ def main() -> int:
         model_3 = ANFIS((1,), 1, layers=layers, n_rules=n_rules, membership_type="Gaussian", order=0, normalize_rules=False).to(device)
         model_4 = ANFIS((1,), 1, layers=layers, n_rules=n_rules, membership_type="Gaussian", order=1, normalize_rules=False).to(device)
     else:
-        model = DQN((1,), 1, layers=[64, 65]).to(device)
+        model = DQN((1,), 1, layers=layers).to(device)
 
     optimizer_1 = optim.Adam(model_1.parameters(), lr=.001)
     optimizer_2 = optim.Adam(model_2.parameters(), lr=.001)
@@ -114,11 +113,6 @@ def main() -> int:
     plt.xlabel(f"Final Loss:\n1st order with normalization: {model_1_loss.item():{format_str}}\n0th order with normalization: {model_2_loss.item():{format_str}}\n1st order without normalization: {model_3_loss.item():{format_str}}\n0th order without normalization: {model_4_loss.item():{format_str}}")
     plt.legend()
     plt.savefig(f"./graphics/{fn_number}_{domain}_{n_layers}_{n_rules}_{layer_size}_{'anfis' if anfis else 'dqn'}.png", bbox_inches='tight')
-
-    print(f"\n")
-
-    if show_anfis_rules:
-        plot_anfis_rules(model)
     return 0
 
 if __name__ == "__main__":

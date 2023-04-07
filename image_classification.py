@@ -4,7 +4,8 @@ from torch.nn import functional as F
 from torch import optim
 import torchvision
 
-from models.modules import ANFIS, DQN
+from models.anfis import ANFIS
+from models.dqn import DQN
 
 def main() -> int:
     torch.manual_seed(19) # using a great prime number
@@ -45,8 +46,8 @@ def main() -> int:
     examples = enumerate(test_loader)
     batch_idx, (example_data, example_targets) = next(examples)
 
-    in_shape = tuple(example_data.shape[1:])
-    out_shape = 10
+    in_shape = example_data.shape[1:]
+    out_shape = len(train_loader.dataset.classes)
 
     # Roughly similar parameters for the models
     model = ANFIS(in_shape, out_shape, layers=[128, 128], n_rules=16).to(device)
